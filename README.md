@@ -7,3 +7,7 @@ The monitoring stack consists of:
 Kibana - for searching and filtering log entries
 FluentD - for capturing logs from cluster nodes and shipping to the central store
 Elasticsearch - Used to collect and index log entries
+
+## ElasticSearch
+
+WARNING: This chart does  not support versions of ElasticSearch below 6.x

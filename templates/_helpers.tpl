@@ -24,19 +24,52 @@ We truncate at 63 chars because some Kubernetes name fields are limited to this 
 {{- end -}}
 
 {{/*
-Create a fully qualified elasticsearch name.
-We truncate at 63 chars because some Kubernetes name fields are limited to this (by the DNS naming spec).
+Create a fully qualified elasticsearch master name.
 */}}
 
-{{- define "logstack.elasticsearch.fullname" -}}
-{{- if .Values.elasticsearch.fullnameOverride -}}
-{{- .Values.elasticsearch.fullnameOverride | trunc 63 | trimSuffix "-" -}}
+{{- define "logstack.elasticsearch.master.fullname" -}}
+{{- if .Values.elasticsearch.master.fullnameOverride -}}
+{{- .Values.elasticsearch.master.fullnameOverride | trunc 63 | trimSuffix "-" -}}
 {{- else -}}
 {{- $name := default .Chart.Name .Values.nameOverride -}}
 {{- if contains $name .Release.Name -}}
-{{- printf "%s-%s" .Release.Name .Values.elasticsearch.name | trunc 63 | trimSuffix "-" -}}
+{{- printf "%s-%s" .Release.Name .Values.elasticsearch.master.name | trunc 63 | trimSuffix "-" -}}
 {{- else -}}
-{{- printf "%s-%s-%s" .Release.Name $name .Values.elasticsearch.name | trunc 63 | trimSuffix "-" -}}
+{{- printf "%s-%s-%s" .Release.Name $name .Values.elasticsearch.master.name | trunc 63 | trimSuffix "-" -}}
+{{- end -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Create a fully qualified elasticsearch data name.
+*/}}
+
+{{- define "logstack.elasticsearch.data.fullname" -}}
+{{- if .Values.elasticsearch.data.fullnameOverride -}}
+{{- .Values.elasticsearch.data.fullnameOverride | trunc 63 | trimSuffix "-" -}}
+{{- else -}}
+{{- $name := default .Chart.Name .Values.nameOverride -}}
+{{- if contains $name .Release.Name -}}
+{{- printf "%s-%s" .Release.Name .Values.elasticsearch.data.name | trunc 63 | trimSuffix "-" -}}
+{{- else -}}
+{{- printf "%s-%s-%s" .Release.Name $name .Values.elasticsearch.data.name | trunc 63 | trimSuffix "-" -}}
+{{- end -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Create a fully qualified elasticsearch client name.
+*/}}
+
+{{- define "logstack.elasticsearch.client.fullname" -}}
+{{- if .Values.elasticsearch.client.fullnameOverride -}}
+{{- .Values.elasticsearch.client.fullnameOverride | trunc 63 | trimSuffix "-" -}}
+{{- else -}}
+{{- $name := default .Chart.Name .Values.nameOverride -}}
+{{- if contains $name .Release.Name -}}
+{{- printf "%s-%s" .Release.Name .Values.elasticsearch.client.name | trunc 63 | trimSuffix "-" -}}
+{{- else -}}
+{{- printf "%s-%s-%s" .Release.Name $name .Values.elasticsearch.client.name | trunc 63 | trimSuffix "-" -}}
 {{- end -}}
 {{- end -}}
 {{- end -}}
@@ -54,6 +87,23 @@ We truncate at 63 chars because some Kubernetes name fields are limited to this 
 {{- printf "%s-%s" .Release.Name .Values.fluentd.name | trunc 63 | trimSuffix "-" -}}
 {{- else -}}
 {{- printf "%s-%s-%s" .Release.Name $name .Values.fluentd.name | trunc 63 | trimSuffix "-" -}}
+{{- end -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Create a fully qualified fluent-bit name.
+We truncate at 63 chars because some Kubernetes name fields are limited to this (by the DNS naming spec).
+*/}}
+{{- define "logstack.fluentbit.fullname" -}}
+{{- if .Values.fluentbit.fullnameOverride -}}
+{{- .Values.fluentbit.fullnameOverride | trunc 63 | trimSuffix "-" -}}
+{{- else -}}
+{{- $name := default .Chart.Name .Values.nameOverride -}}
+{{- if contains $name .Release.Name -}}
+{{- printf "%s-%s" .Release.Name .Values.fluentbit.name | trunc 63 | trimSuffix "-" -}}
+{{- else -}}
+{{- printf "%s-%s-%s" .Release.Name $name .Values.fluentbit.name | trunc 63 | trimSuffix "-" -}}
 {{- end -}}
 {{- end -}}
 {{- end -}}
@@ -104,24 +154,13 @@ Return the appropriate apiVersion for networkpolicy.
 {{- end -}}
 
 {{/*
-Create the name of the service account to use for the elasticsearch component
+Create the name of the service account to use for the fluentbit component
 */}}
-{{- define "logstack.serviceAccountName.elasticsearch" -}}
-{{- if .Values.serviceAccounts.elasticsearch.create -}}
-    {{ default (include "logstack.elasticsearch.fullname" .) .Values.serviceAccounts.elasticsearch.name }}
+{{- define "logstack.serviceAccountName.fluentbit" -}}
+{{- if .Values.serviceAccounts.fluentbit.create -}}
+    {{ default (include "logstack.fluentbit.fullname" .) .Values.serviceAccounts.fluentbit.name }}
 {{- else -}}
-    {{ default "default" .Values.serviceAccounts.elasticsearch.name }}
-{{- end -}}
-{{- end -}}
-
-{{/*
-Create the name of the service account to use for the fluentd component
-*/}}
-{{- define "logstack.serviceAccountName.fluentd" -}}
-{{- if .Values.serviceAccounts.fluentd.create -}}
-    {{ default (include "logstack.fluentd.fullname" .) .Values.serviceAccounts.fluentd.name }}
-{{- else -}}
-    {{ default "default" .Values.serviceAccounts.fluentd.name }}
+    {{ default "default" .Values.serviceAccounts.fluentbit.name }}
 {{- end -}}
 {{- end -}}
 

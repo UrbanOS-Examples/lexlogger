@@ -1,0 +1,33 @@
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: {{ template "logstack.name" . }}
+    chart: {{ .Chart.Name }}-{{ .Chart.Version }}
+    component: "{{ .Values.elasticsearch.client.name }}"
+    heritage: {{ .Release.Service }}
+    release: {{ .Release.Name }}
+  name: {{ template "logstack.elasticsearch.client.fullname" . }}
+{{- if .Values.elasticsearch.client.serviceAnnotations }}
+  annotations:
+{{ toYaml .Values.elasticsearch.client.serviceAnnotations | indent 4 }}
+{{- end }}
+spec:
+  ports:
+    - name: http
+      port: 9200
+      targetPort: http
+  selector:
+    app: {{ template "logstack.name" . }}
+    component: "{{ .Values.elasticsearch.client.name }}"
+    release: {{ .Release.Name }}
+  type: {{ .Values.elasticsearch.client.serviceType }}
+{{- if .Values.elasticsearch.client.loadBalancerIP }}
+  loadBalancerIP: "{{ .Values.elasticsearch.client.loadBalancerIP }}"
+{{- end }}
+  {{if .Values.elasticsearch.client.loadBalancerSourceRanges}}
+  loadBalancerSourceRanges:
+    {{range $rangeList := .Values.elasticsearch.client.loadBalancerSourceRanges}}
+    - {{ $rangeList }}
+    {{end}}
+  {{end}}

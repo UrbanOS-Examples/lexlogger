@@ -1,0 +1,32 @@
+{{- if .Values.fluentd.ingress.enabled -}}
+{{- $serviceName := include "logstack.fluentd.fullname" . -}}
+{{- $servicePort := .Values.fluentd.service.externalPort -}}
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: {{ template "logstack.fluentd.fullname" . }}
+  labels:
+    app: {{ template "logstack.name" . }}
+    chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+  annotations:
+    {{- range $key, $value := .Values.fluentd.ingress.annotations }}
+      {{ $key }}: {{ $value | quote }}
+    {{- end }}
+spec:
+  rules:
+    {{- range $host := .Values.fluentd.ingress.hosts }}
+    - host: {{ $host.name }}
+      http:
+        paths:
+          - path: /
+            backend:
+              serviceName: {{ $host.serviceName }}
+              servicePort: {{ $host.servicePort }}
+    {{- end -}}
+  {{- if .Values.fluentd.ingress.tls }}
+  tls:
+{{ toYaml .Values.fluentd.ingress.tls | indent 4 }}
+  {{- end -}}
+{{- end -}}

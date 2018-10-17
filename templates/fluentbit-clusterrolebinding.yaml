@@ -1,0 +1,19 @@
+{{- if .Values.rbac.create -}}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  labels:
+    app: {{ template "logstack.name" . }}
+    chart: {{ .Chart.Name }}-{{ .Chart.Version }}
+    heritage: {{ .Release.Service }}
+    release: {{ .Release.Name }}
+  name: {{ template "logstack.fluentbit.fullname" . }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ template "logstack.fluentbit.fullname" . }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ template "logstack.serviceAccountName.fluentbit" . }}
+    namespace: {{ .Release.Namespace }}
+{{- end -}}

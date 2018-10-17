@@ -1,0 +1,28 @@
+{{- if and .Values.fluentd.persistence.enabled -}}
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: {{ template "logstack.fluentd.fullname" . }}
+  labels:
+    app: {{ template "logstack.name" . }}
+    chart: {{ .Chart.Name }}-{{ .Chart.Version }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+{{- if .Values.fluentd.persistence.annotations }}
+  annotations:
+{{ toYaml .Values.fluentd.persistence.annotations | indent 4 }}
+{{- end }}
+spec:
+  accessModes:
+    - {{ .Values.fluentd.persistence.accessMode | quote }}
+  resources:
+    requests:
+      storage: {{ .Values.fluentd.persistence.size | quote }}
+{{- if .Values.fluentd.persistence.storageClass }}
+{{- if (eq "-" .Values.fluentd.persistence.storageClass) }}
+  storageClassName: ""
+{{- else }}
+  storageClassName: "{{ .Values.fluentd.persistence.storageClass }}"
+{{- end }}
+{{- end }}
+{{- end -}}
