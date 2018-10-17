@@ -330,9 +330,6 @@ fluentd:
     # annotations: {}
     accessMode: ReadWriteOnce
     size: 10Gi
-
   nodeSelector: {}
-
   tolerations: []
-
   affinity: {}
