@@ -1,0 +1,16 @@
+name: logstack
+apiVersion: v1
+description: Combined elasticsearch, fluentd, and kibana stack for the Smart City OS
+version: 1.0.0
+tillerVersion: ">=2.8.0"
+keywords:
+- logging
+- elasticsearch
+- kibana
+- fluentd
+sources:
+- https://github.com/fluentd/fluentd
+- https://github.com/elastic/elasticsearch
+- https://github.com/elastic/kibana
+- https://github.com/kubernetes-incubator/external-dns
+- https://github.com/kubernetes-sigs/aws-alb-ingress-controller
