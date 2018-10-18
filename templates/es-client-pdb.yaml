@@ -5,7 +5,7 @@ metadata:
   labels:
     app: {{ template "logstack.name" . }}
     chart: {{ .Chart.Name }}-{{ .Chart.Version }}
-    component: "{{ .Values.elasticsearch.client.name }}"
+    component: {{ .Values.elasticsearch.client.name }}
     heritage: {{ .Release.Service }}
     release: {{ .Release.Name }}
   name: {{ template "logstack.elasticsearch.client.fullname" . }}
@@ -19,6 +19,6 @@ spec:
   selector:
     matchLabels:
       app: {{ template "logstack.name" . }}
-      component: "{{ .Values.elasticsearch.client.name }}"
+      component: {{ .Values.elasticsearch.client.name }}
       release: {{ .Release.Name }}
 {{- end }}

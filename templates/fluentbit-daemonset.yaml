@@ -5,14 +5,14 @@ metadata:
   labels:
     app: {{ template "logstack.fullname" . }}
     chart: {{ .Chart.Name }}-{{ .Chart.Version }}
-    component: "{{ .Values.fluentbit.name }}"
+    component: {{ .Values.fluentbit.name }}
     heritage: {{ .Release.Service }}
     release: {{ .Release.Name }}
 spec:
   selector:
     matchLabels:
       app: {{ template "logstack.name" . }}
-      component: "{{ .Values.fluentbit.name }}"
+      component: {{ .Values.fluentbit.name }}
       release: {{ .Release.Name }}
   updateStrategy:
     type: RollingUpdate
@@ -20,7 +20,7 @@ spec:
     metadata:
       labels:
         app: {{ template "logstack.fullname" . }}
-        component: "{{ .Values.fluentbit.name }}"
+        component: {{ .Values.fluentbit.name }}
         release: {{ .Release.Name }}
       annotations:
         checksum/config: {{ include (print $.Template.BasePath "/fluentbit-configmap.yaml") . | sha256sum }}

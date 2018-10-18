@@ -5,7 +5,7 @@ metadata:
   labels:
     app: {{ template "logstack.name" . }}
     chart: {{ .Chart.Name }}-{{ .Chart.Version }}
-    component: "{{ .Values.fluentd.name }}"
+    component: {{ .Values.fluentd.name }}
     release: {{ .Release.Name }}
     heritage: {{ .Release.Service }}
 spec:
@@ -13,7 +13,7 @@ spec:
   selector:
     matchLabels:
       app: {{ template "logstack.name" . }}
-      component: "{{ .Values.fluentd.name }}"
+      component: {{ .Values.fluentd.name }}
       release: {{ .Release.Name }}
   {{- if .Values.fluentd.persistence.enabled }}
   strategy:
@@ -23,7 +23,7 @@ spec:
     metadata:
       labels:
         app: {{ template "logstack.name" . }}
-        component: "{{ .Values.fluentd.name }}"
+        component: {{ .Values.fluentd.name }}
         release: {{ .Release.Name }}
     spec:
 {{- if .Values.fluentd.image.pullSecrets }}
@@ -33,14 +33,14 @@ spec:
       {{- end }}
 {{- end }}
       containers:
-      - name: {{ .Chart.Name }}
+      - name: {{ .Chart.Name }}-fluentd
         image: "{{ .Values.fluentd.image.repository }}:{{ .Values.fluentd.image.tag }}"
         imagePullPolicy: {{ .Values.fluentd.image.pullPolicy }}
         env:
           - name: OUTPUT_HOST
-            value: {{ .Values.fluentd.output.host | quote }}
+            value: {{ template "logstack.elasticsearch.client.fullname" . }}
           - name: OUTPUT_PORT
-            value: {{ .Values.fluentd.output.port | quote }}
+            value: "9200"
           - name: OUTPUT_BUFFER_CHUNK_LIMIT
             value: {{ .Values.fluentd.output.buffer_chunk_limit | quote }}
           - name: OUTPUT_BUFFER_QUEUE_LIMIT

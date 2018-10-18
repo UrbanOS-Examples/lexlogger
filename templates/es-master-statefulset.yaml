@@ -4,7 +4,7 @@ metadata:
   labels:
     app: {{ template "logstack.name" . }}
     chart: {{ .Chart.Name }}-{{ .Chart.Version }}
-    component: "{{ .Values.elasticsearch.master.name }}"
+    component: {{ .Values.elasticsearch.master.name }}
     heritage: {{ .Release.Service }}
     release: {{ .Release.Name }}
   name: {{ template "logstack.elasticsearch.master.fullname" . }}
@@ -12,7 +12,7 @@ spec:
   selector:
     matchLabels:
       app: {{ template "logstack.name" . }}
-      component: "{{ .Values.elasticsearch.master.name }}"
+      component: {{ .Values.elasticsearch.master.name }}
       release: {{ .Release.Name }}
   serviceName: {{ template "logstack.elasticsearch.master.fullname" . }}
   replicas: {{ .Values.elasticsearch.master.replicas }}
@@ -20,7 +20,7 @@ spec:
     metadata:
       labels:
         app: {{ template "logstack.name" . }}
-        component: "{{ .Values.elasticsearch.master.name }}"
+        component: {{ .Values.elasticsearch.master.name }}
         release: {{ .Release.Name }}
         {{- if .Values.elasticsearch.master.podAnnotations }}
       annotations:
@@ -41,9 +41,9 @@ spec:
             - topologyKey: "kubernetes.io/hostname"
               labelSelector:
                 matchLabels:
-                  app: "{{ template "logstack.name" . }}"
+                  app: {{ template "logstack.name" . }}
                   release: "{{ .Release.Name }}"
-                  component: "{{ .Values.elasticsearch.master.name }}"
+                  component: {{ .Values.elasticsearch.master.name }}
       {{- else if eq .Values.elasticsearch.master.antiAffinity "soft" }}
         podAntiAffinity:
           preferredDuringSchedulingIgnoredDuringExecution:
@@ -52,9 +52,9 @@ spec:
               topologyKey: kubernetes.io/hostname
               labelSelector:
                 matchLabels:
-                  app: "{{ template "logstack.name" . }}"
+                  app: {{ template "logstack.name" . }}
                   release: "{{ .Release.Name }}"
-                  component: "{{ .Values.elasticsearch.master.name }}"
+                  component: {{ .Values.elasticsearch.master.name }}
       {{- end }}
       {{- with .Values.elasticsearch.master.nodeAffinity }}
         nodeAffinity:

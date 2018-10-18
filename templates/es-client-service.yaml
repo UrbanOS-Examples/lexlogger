@@ -4,7 +4,7 @@ metadata:
   labels:
     app: {{ template "logstack.name" . }}
     chart: {{ .Chart.Name }}-{{ .Chart.Version }}
-    component: "{{ .Values.elasticsearch.client.name }}"
+    component: {{ .Values.elasticsearch.client.name }}
     heritage: {{ .Release.Service }}
     release: {{ .Release.Name }}
   name: {{ template "logstack.elasticsearch.client.fullname" . }}
@@ -19,7 +19,7 @@ spec:
       targetPort: http
   selector:
     app: {{ template "logstack.name" . }}
-    component: "{{ .Values.elasticsearch.client.name }}"
+    component: {{ .Values.elasticsearch.client.name }}
     release: {{ .Release.Name }}
   type: {{ .Values.elasticsearch.client.serviceType }}
 {{- if .Values.elasticsearch.client.loadBalancerIP }}

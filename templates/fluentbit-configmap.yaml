@@ -6,7 +6,7 @@ metadata:
   labels:
     app: {{ template "logstack.fullname" . }}
     chart: {{ .Chart.Name }}-{{ .Chart.Version }}
-    component: "{{ .Values.fluentbit.name }}"
+    component: {{ .Values.fluentbit.name }}
     heritage: {{ .Release.Service }}
     release: {{ .Release.Name }}
 data:
@@ -56,8 +56,8 @@ data:
     [OUTPUT]
         Name          forward
         Match         *
-        Host          {{ .Values.fluentbit.backend.forward.host }}
-        Port          {{ .Values.fluentbit.backend.forward.port }}
+        Host          {{ template "logstack.fluentd.fullname" . }}
+        Port          {{ with .Values.fluentd.service }}{{- (index .ports 1).containerPort }}{{ end }}
         Retry_Limit False
 
   parsers.conf: |-

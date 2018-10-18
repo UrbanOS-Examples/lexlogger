@@ -4,7 +4,7 @@ metadata:
   labels:
     app: {{ template "logstack.name" . }}
     chart: {{ .Chart.Name }}-{{ .Chart.Version }}
-    component: "{{ .Values.elasticsearch.client.name }}"
+    component: {{ .Values.elasticsearch.client.name }}
     heritage: {{ .Release.Service }}
     release: {{ .Release.Name }}
   name: {{ template "logstack.elasticsearch.client.fullname" . }}
@@ -12,14 +12,14 @@ spec:
   selector:
     matchLabels:
       app: {{ template "logstack.name" . }}
-      component: "{{ .Values.elasticsearch.client.name }}"
+      component: {{ .Values.elasticsearch.client.name }}
       release: {{ .Release.Name }}
   replicas: {{ .Values.elasticsearch.client.replicas }}
   template:
     metadata:
       labels:
         app: {{ template "logstack.name" . }}
-        component: "{{ .Values.elasticsearch.client.name }}"
+        component: {{ .Values.elasticsearch.client.name }}
         release: {{ .Release.Name }}
         {{- if .Values.elasticsearch.client.podAnnotations }}
       annotations:
@@ -40,9 +40,9 @@ spec:
             - topologyKey: "kubernetes.io/hostname"
               labelSelector:
                 matchLabels:
-                  app: "{{ template "logstack.name" . }}"
-                  release: "{{ .Release.Name }}"
-                  component: "{{ .Values.elasticsearch.client.name }}"
+                  app: {{ template "logstack.name" . }}
+                  release: {{ .Release.Name }}
+                  component: {{ .Values.elasticsearch.client.name }}
       {{- else if eq .Values.elasticsearch.client.antiAffinity "soft" }}
         podAntiAffinity:
           preferredDuringSchedulingIgnoredDuringExecution:
@@ -51,9 +51,9 @@ spec:
               topologyKey: kubernetes.io/hostname
               labelSelector:
                 matchLabels:
-                  app: "{{ template "logstack.name" . }}"
-                  release: "{{ .Release.Name }}"
-                  component: "{{ .Values.elasticsearch.client.name }}"
+                  app: {{ template "logstack.name" . }}
+                  release: {{ .Release.Name }}
+                  component: {{ .Values.elasticsearch.client.name }}
       {{- end }}
       {{- with .Values.elasticsearch.client.nodeAffinity }}
         nodeAffinity:

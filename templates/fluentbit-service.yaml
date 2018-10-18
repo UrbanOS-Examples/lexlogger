@@ -6,7 +6,7 @@ metadata:
   labels:
     app: {{ template "logstack.fullname" . }}
     chart: {{ .Chart.Name }}-{{ .Chart.Version }}
-    component: "{{ .Values.fluentbit.name }}"
+    component: {{ .Values.fluentbit.name }}
     heritage: {{ .Release.Service }}
     release: {{ .Release.Name }}
 spec:
@@ -17,6 +17,6 @@ spec:
     targetPort: metrics
     name: metrics
   selector:
-    component: "{{ .Values.fluentbit.name }}"
+    component: {{ .Values.fluentbit.name }}
     release: {{ .Release.Name }}
 {{- end }}

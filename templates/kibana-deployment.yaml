@@ -4,7 +4,7 @@ metadata:
   labels:
     app: {{ template "logstack.name" . }}
     chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
-    component: "{{ .Values.kibana.name }}"
+    component: {{ .Values.kibana.name }}
     heritage: {{ .Release.Service }}
     release: {{ .Release.Name }}
   name: {{ template "logstack.kibana.fullname" . }}
@@ -98,7 +98,7 @@ spec:
 {{- end }}
 {{- end }}
       containers:
-      - name: {{ .Chart.Name }}
+      - name: {{ .Chart.Name }}-kibana
         image: "{{ .Values.kibana.image.repository }}:{{ .Values.kibana.image.tag }}"
         imagePullPolicy: {{ .Values.kibana.image.pullPolicy }}
         {{- if .Values.kibana.commandline.args }}
@@ -108,6 +108,8 @@ spec:
 {{ toYaml .Values.kibana.commandline.args | indent 10 }}
         {{- end }}
         env:
+        - name: "ELASTICSEARCH_URL"
+          value: {{ template "logstack.elasticsearch.client.fullname" . }}
         {{- range $key, $value := .Values.kibana.env }}
         - name: "{{ $key }}"
           value: "{{ $value }}"

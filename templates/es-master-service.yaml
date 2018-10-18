@@ -4,7 +4,7 @@ metadata:
   labels:
     app: {{ template "logstack.name" . }}
     chart: {{ .Chart.Name }}-{{ .Chart.Version }}
-    component: "{{ .Values.elasticsearch.master.name }}"
+    component: {{ .Values.elasticsearch.master.name }}
     heritage: {{ .Release.Service }}
     release: {{ .Release.Name }}
   name: {{ template "logstack.fullname" . }}-discovery
@@ -15,5 +15,5 @@ spec:
       targetPort: transport
   selector:
     app: {{ template "logstack.name" . }}
-    component: "{{ .Values.elasticsearch.master.name }}"
+    component: {{ .Values.elasticsearch.master.name }}
     release: {{ .Release.Name }}

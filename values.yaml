@@ -15,9 +15,6 @@ elasticsearch:
     repository: "docker.elastic.co/elasticsearch/elasticsearch-oss"
     tag: "6.4.2"
     pullPolicy: "IfNotPresent"
-    # If specified, use these secrets to access the image
-    # pullSecrets:
-    #   - registry-secret
 
   initImage:
     repository: "busybox"
@@ -81,7 +78,6 @@ elasticsearch:
       accessMode: ReadWriteOnce
       name: data
       size: "4Gi"
-      # storageClass: "ssd"
     antiAffinity: "soft"
     nodeAffinity: {}
     nodeSelector: {}
@@ -114,7 +110,6 @@ elasticsearch:
       accessMode: ReadWriteOnce
       name: data
       size: "30Gi"
-      # storageClass: "ssd"
     terminationGracePeriodSeconds: 3600
     antiAffinity: "soft"
     nodeAffinity: {}
@@ -142,6 +137,7 @@ elasticsearch:
   extraInitContainers: |
 
 fluentbit:
+  name: fluentbit
   on_minikube: false
 
   image:
@@ -158,12 +154,6 @@ fluentbit:
 
   # When enabled, fluent-bit will keep track of tailing offsets across pod restarts.
   trackOffsets: false
-
-  backend:
-    type: forward
-    forward:
-      host: fluentd
-      port: 24284
 
   parsers:
     enabled: false
@@ -221,16 +211,14 @@ fluentbit:
   #  enableExclude: true
 
 fluentd:
+  name: fluentd
+
   image:
     repository: gcr.io/google-containers/fluentd-elasticsearch
     tag: v2.3.1
     pullPolicy: IfNotPresent
-    # pullSecrets:
-    #   - secret1
 
   output:
-    host: elasticsearch-client.default.svc.cluster.local
-    port: 9200
     buffer_chunk_limit: 2M
     buffer_queue_limit: 8
 
@@ -243,6 +231,9 @@ fluentd:
       - name: "monitor-agent"
         protocol: TCP
         containerPort: 24220
+      - name: "fluentbit-forward"
+        protocol: TCP
+        containerPort: 24224
 
   ingress:
     enabled: false
@@ -338,6 +329,8 @@ fluentd:
   affinity: {}
 
 kibana:
+  name: kibana
+  
   image:
     repository: "docker.elastic.co/kibana/kibana-oss"
     tag: "6.4.2"

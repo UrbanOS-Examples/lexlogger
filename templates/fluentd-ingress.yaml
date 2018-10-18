@@ -8,7 +8,7 @@ metadata:
   labels:
     app: {{ template "logstack.name" . }}
     chart: {{ .Chart.Name }}-{{ .Chart.Version }}
-    component: "{{ .Value.fluentd.name }}"
+    component: {{ .Value.fluentd.name }}
     release: {{ .Release.Name }}
     heritage: {{ .Release.Service }}
   annotations:

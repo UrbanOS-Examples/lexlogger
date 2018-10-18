@@ -4,7 +4,7 @@ metadata:
   labels:
     app: {{ template "logstack.name" . }}
     chart: {{ .Chart.Name }}-{{ .Chart.Version }}
-    component: "{{ .Values.kibana.name }}"
+    component: {{ .Values.kibana.name }}
     release: {{ .Release.Name }}
     heritage: {{ .Release.Service }}
   {{- range $key, $value := .Values.kibana.service.labels }}
@@ -40,7 +40,7 @@ spec:
 {{- end }}
   selector:
     app: {{ template "logstack.name" . }}
-    component: "{{ .Values.kibana.name }}"
+    component: {{ .Values.kibana.name }}
     release: {{ .Release.Name }}
 {{- if .Values.kibana.service.loadBalancerIP }}
   loadBalancerIP: {{ .Values.kibana.service.loadBalancerIP }}
