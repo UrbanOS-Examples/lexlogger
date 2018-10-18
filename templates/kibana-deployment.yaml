@@ -1,0 +1,182 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: {{ template "logstack.name" . }}
+    chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
+    component: "{{ .Values.kibana.name }}"
+    heritage: {{ .Release.Service }}
+    release: {{ .Release.Name }}
+  name: {{ template "logstack.kibana.fullname" . }}
+spec:
+  replicas: {{ .Values.kibana.replicaCount }}
+  revisionHistoryLimit: {{ .Values.kibana.revisionHistoryLimit }}
+  template:
+    metadata:
+    {{- if .Values.kibana.podAnnotations }}
+      annotations:
+{{ toYaml .Values.kibana.podAnnotations | indent 8 }}
+    {{- end }}
+      labels:
+        app: {{ template "logstack.name" . }}
+        component: "{{ .Values.kibana.name }}"
+        release: "{{ .Release.Name }}"
+    spec:
+      serviceAccountName: {{ template "logstack.serviceAccountName.kibana" . }}
+      {{- if .Values.kibana.priorityClassName }}
+      priorityClassName: "{{ .Values.kibana.priorityClassName }}"
+      {{- end }}
+{{- if or (.Values.kibana.dashboardImport.dashboards) (.Values.kibana.plugins) }}
+      initContainers:
+{{- if .Values.kibana.dashboardImport.dashboards }}
+      - name: {{ .Chart.Name }}-dashboardimport
+        image: "{{ .Values.kibana.image.repository }}:{{ .Values.kibana.image.tag }}"
+        imagePullPolicy: {{ .Values.kibana.image.pullPolicy }}
+        command: ["/bin/bash"]
+        args:
+          - "-c"
+          - "/tmp/dashboardImport.sh"
+{{- if .Values.kibana.commandline.args }}
+{{ toYaml .Values.kibana.commandline.args | indent 10 }}
+{{- end }}
+        env:
+        {{- range $key, $value := .Values.kibana.env }}
+        - name: "{{ $key }}"
+          value: "{{ $value }}"
+        {{- end }}
+        ports:
+        - containerPort: {{ .Values.kibana.service.internalPort }}
+          name: {{ template "logstack.kibana.fullname" . }}
+          protocol: TCP
+        volumeMounts:
+        - name: {{ template "logstack.kibana.fullname" . }}-dashboards
+          mountPath: "/kibanadashboards"
+        - name: {{ template "logstack.kibana.fullname" . }}-importscript
+          mountPath: "/tmp/dashboardImport.sh"
+          subPath: dashboardImport.sh
+        {{- range $configFile := (keys .Values.kibana.files) }}
+        - name: {{ template "logstack.kibana.fullname" $ }}
+          mountPath: "/usr/share/kibana/config/{{ $configFile }}"
+          subPath: {{ $configFile }}
+        {{- end }}
+{{- end }}
+{{- if .Values.kibana.plugins}}
+      - name: {{ .Chart.Name }}-plugins-install
+        image: "{{ .Values.kibana.image.repository }}:{{ .Values.kibana.image.tag }}"
+        imagePullPolicy: {{ .Values.kibana.image.pullPolicy }}
+        command:
+          - /bin/bash
+          - "-c"
+          - |
+            set -e
+            plugins=(
+            {{- range .Values.kibana.plugins }}
+            {{ . }}
+            {{- end }}
+            )
+            for i in "${plugins[@]}"
+            do
+               ./bin/kibana-plugin install $i
+            done
+        env:
+        {{- range $key, $value := .Values.kibana.env }}
+        - name: "{{ $key }}"
+          value: "{{ $value }}"
+        {{- end }}
+        ports:
+        - containerPort: {{ .Values.kibana.service.internalPort }}
+          name: {{ template "logstack.kibana.fullname" . }}
+          protocol: TCP
+        volumeMounts:
+        - name: plugins
+          mountPath: /usr/share/kibana/plugins
+        {{- range $configFile := (keys .Values.kibana.files) }}
+        - name: {{ template "logstack.kibana.fullname" $ }}
+          mountPath: "/usr/share/kibana/config/{{ $configFile }}"
+          subPath: {{ $configFile }}
+        {{- end }}
+{{- end }}
+{{- end }}
+      containers:
+      - name: {{ .Chart.Name }}
+        image: "{{ .Values.kibana.image.repository }}:{{ .Values.kibana.image.tag }}"
+        imagePullPolicy: {{ .Values.kibana.image.pullPolicy }}
+        {{- if .Values.kibana.commandline.args }}
+        args:
+          - "/bin/bash"
+          - "/usr/local/bin/kibana-docker"
+{{ toYaml .Values.kibana.commandline.args | indent 10 }}
+        {{- end }}
+        env:
+        {{- range $key, $value := .Values.kibana.env }}
+        - name: "{{ $key }}"
+          value: "{{ $value }}"
+        {{- end }}
+{{- if (not .Values.kibana.authProxyEnabled) }}
+        ports:
+        - containerPort: {{ .Values.kibana.service.internalPort }}
+          name: {{ template "logstack.kibana.fullname" . }}
+          protocol: TCP
+{{- end }}
+{{- if .Values.kibana.livenessProbe.enabled }}
+        livenessProbe:
+          httpGet:
+            path: /status
+            port: {{ .Values.kibana.service.internalPort }}
+          initialDelaySeconds: {{ .Values.kibana.livenessProbe.initialDelaySeconds }}
+          timeoutSeconds: {{ .Values.kibana.livenessProbe.timeoutSeconds }}
+{{- end }}
+{{- if .Values.kibana.readinessProbe.enabled }}
+        readinessProbe:
+          httpGet:
+            path: /status
+            port: {{ .Values.kibana.service.internalPort }}
+          initialDelaySeconds: {{ .Values.kibana.readinessProbe.initialDelaySeconds }}
+          timeoutSeconds: {{ .Values.kibana.readinessProbe.timeoutSeconds }}
+{{- end }}
+        resources:
+{{ toYaml .Values.kibana.resources | indent 10 }}
+        volumeMounts:
+        {{- range $configFile := (keys .Values.kibana.files) }}
+        - name: {{ template "logstack.kibana.fullname" $ }}
+          mountPath: "/usr/share/kibana/config/{{ $configFile }}"
+          subPath: {{ $configFile }}
+        {{- end }}
+{{- if .Values.kibana.plugins}}
+        - name: plugins
+          mountPath: /usr/share/kibana/plugins
+{{- end }}        
+{{- with .Values.kibana.extraContainers }}
+{{ tpl . $ | indent 6 }}
+{{- end }}
+    {{- if .Values.kibana.image.pullSecrets }}
+      imagePullSecrets:
+{{ toYaml .Values.kibana.image.pullSecrets | indent 8 }}
+    {{- end }}
+    {{- if .Values.kibana.affinity }}
+      affinity:
+{{ toYaml .Values.kibana.affinity | indent 8 }}
+    {{- end }}
+    {{- if .Values.kibana.nodeSelector }}
+      nodeSelector:
+{{ toYaml .Values.kibana.nodeSelector | indent 8 }}
+    {{- end }}
+      tolerations:
+{{ toYaml .Values.kibana.tolerations | indent 8 }}
+      volumes:
+        - name: {{ template "logstack.kibana.fullname" . }}
+          configMap:
+            name: {{ template "logstack.kibana.fullname" . }}
+{{- if .Values.kibana.plugins}}
+        - name: plugins
+          emptyDir: {}
+{{- end }}
+{{- if .Values.kibana.dashboardImport.dashboards }}
+        - name: {{ template "logstack.kibana.fullname" . }}-dashboards
+          configMap:
+            name: {{ template "logstack.kibana.fullname" . }}-dashboards
+        - name: {{ template "logstack.kibana.fullname" . }}-importscript
+          configMap:
+            name: {{ template "logstack.kibana.fullname" . }}-importscript
+            defaultMode: 0777
+{{- end }}

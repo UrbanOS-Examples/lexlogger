@@ -9,6 +9,11 @@ metadata:
     release: {{ .Release.Name }}
   name: {{ template "logstack.elasticsearch.data.fullname" . }}
 spec:
+  selector:
+    matchLabels:
+      app: {{ template "logstack.name" . }}
+      component: "{{ .Values.elasticsearch.data.name }}"
+      release: {{ .Release.Name }}
   serviceName: {{ template "logstack.elasticsearch.data.fullname" . }}
   replicas: {{ .Values.elasticsearch.data.replicas }}
   template:

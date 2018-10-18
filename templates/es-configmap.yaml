@@ -5,6 +5,7 @@ metadata:
   labels:
     app: {{ template "logstack.fullname" . }}
     chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
+    component: "{{ .Values.elasticsearch.master.name }}"
     release: "{{ .Release.Name }}"
     heritage: "{{ .Release.Service }}"
 data:
