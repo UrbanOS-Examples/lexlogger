@@ -23,7 +23,7 @@ spec:
         component: "{{ .Values.fluentbit.name }}"
         release: {{ .Release.Name }}
       annotations:
-        checksum/config: {{ include (print $.Template.BasePath "/config.yaml") . | sha256sum }}
+        checksum/config: {{ include (print $.Template.BasePath "/fluentbit-configmap.yaml") . | sha256sum }}
 {{- if .Values.fluentbit.podAnnotations }}
 {{ toYaml .Values.fluentbit.podAnnotations | indent 8 }}
 {{- end }}
