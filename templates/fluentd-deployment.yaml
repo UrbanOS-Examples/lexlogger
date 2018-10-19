@@ -78,7 +78,7 @@ spec:
       volumes:
         - name: config-volume-{{ template "logstack.fluentd.fullname" . }}
           configMap:
-            name: {{ template "logstack.fluentd.fullname" . }}
+            name: {{ template "logstack.fluentd.fullname" . }}-config
         - name: buffer
           {{- if .Values.fluentd.persistence.enabled }}
           persistentVolumeClaim:

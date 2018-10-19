@@ -161,7 +161,7 @@ spec:
       volumes:
       - name: config
         configMap:
-          name: {{ template "logstack.fullname" . }}
+          name: {{ template "logstack.fullname" . }}-elasticsearch
 {{- if .Values.elasticsearch.cluster.keystoreSecret }}
       - name: keystore
         secret:

@@ -19,7 +19,7 @@ spec:
   template:
     metadata:
       labels:
-        app: {{ template "logstack.fullname" . }}
+        app: {{ template "logstack.name" . }}
         component: {{ .Values.fluentbit.name }}
         release: {{ .Release.Name }}
       annotations:

@@ -1,3 +1,10 @@
+global:
+  ingress:
+    annotations:
+      kubernetes.io/ingress.class: alb
+      alb.ingress.kubernetes.io/tags: scos.delete.on.teardown=true
+      alb.ingress.kubernetes.io/scheme: internal
+
 rbac:
   create: true
 
@@ -22,7 +29,7 @@ elasticsearch:
     pullPolicy: "Always"
 
   cluster:
-    name: "logstack"
+    name: "es-logstack"
     # If you want X-Pack installed, switch to an image that includes it, enable this option and toggle the features you want
     # enabled in the environment variables outlined in the README
     xpackEnable: false
@@ -39,7 +46,7 @@ elasticsearch:
       MINIMUM_MASTER_NODES: "2"
 
   client:
-    name: client
+    name: es-client
     replicas: 2
     serviceType: ClusterIP
     loadBalancerIP: {}
@@ -69,7 +76,7 @@ elasticsearch:
       # maxUnavailable: 1
 
   master:
-    name: master
+    name: es-master
     exposeHttp: false
     replicas: 3
     heapSize: "512m"
@@ -101,7 +108,7 @@ elasticsearch:
       type: OnDelete
 
   data:
-    name: data
+    name: es-data
     exposeHttp: false
     replicas: 2
     heapSize: "1536m"
@@ -231,7 +238,7 @@ fluentd:
       - name: "monitor-agent"
         protocol: TCP
         containerPort: 24220
-      - name: "fluentbit-forward"
+      - name: "fbit-forward"
         protocol: TCP
         containerPort: 24224
 
@@ -243,6 +250,8 @@ fluentd:
     #     serviceName: http-input
     #     servicePort: 9880
     annotations:
+      alb.ingress.kubernetes.io/healthcheck-path: /api/plugins.json
+      alb.ingress.kubernetes.io/healthcheck-port: "24220"
     tls:
 
   configMaps:
@@ -363,7 +372,7 @@ kibana:
       # server.defaultRoute: "/app/kibana"
 
   service:
-    type: ClusterIP
+    type: NodePort
     externalPort: 443
     internalPort: 5601
     # authProxyPort: 5602 To be used with authProxyEnabled and a proxy extraContainer
@@ -381,11 +390,11 @@ kibana:
     labels:
 
   ingress:
-    enabled: false
+    enabled: true
     # hosts:
       # - chart-example.local
-    # annotations:
-    #   kubernetes.io/ingress.class: nginx
+    annotations:
+      alb.ingress.kubernetes.io/healthcheck-path: /status
     #   kubernetes.io/tls-acme: "true"
     # tls:
       # - secretName: chart-example-tls
@@ -450,3 +459,10 @@ kibana:
   plugins:
     # - https://github.com/sivasamyk/logtrail/releases/download/v0.1.29/logtrail-6.4.0-0.1.29.zip
     # - other_plugin
+
+# helm upgrade --install logstack . \
+#  --namespace logstack \
+#  --set global.ingress.annotations."alb\.ingress\.kubernetes\.io\/subnets"="${SUBNETS//,/\\,}" \
+#  --set global.ingress.annotations."alb\.ingress\.kubernetes\.io\/security\-groups"="${SECURITY_GROUPS}" \
+#  --set kibana.ingress.hosts[0]="kibana\.${DNS_ZONE}" \
+#  --values ./values.yaml
