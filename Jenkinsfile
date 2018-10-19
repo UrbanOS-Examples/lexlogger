@@ -58,8 +58,7 @@ def deployLoggingTo(environment) {
                 --namespace=logstack \
                 --set global.ingress.annotations."alb\\.ingress\\.kubernetes\\.io\\/subnets"="${subnets}" \
                 --set global.ingress.annotations."alb\\.ingress\\.kubernetes\\.io\\/security\\-groups"="${albToClusterSG}" \
-                --set kibana.ingress.hosts[0]="kibana\\.${dns_zone}" \
-                --values run-config.yaml
+                --set kibana.ingress.hosts[0]="kibana\\.${dns_zone}"
         """.trim())
     }
 }
