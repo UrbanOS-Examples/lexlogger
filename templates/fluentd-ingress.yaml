@@ -1,0 +1,37 @@
+{{- if .Values.fluentd.ingress.enabled -}}
+{{- $serviceName := include "lexlogger.fluentd.fullname" . -}}
+{{- $servicePort := .Values.fluentd.service.externalPort -}}
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  annotations:
+{{- if .Values.global.ingress.annotations }}
+{{ toYaml .Values.global.ingress.annotations | trim | indent 4 }}
+{{- end }}
+{{- if .Values.fluentd.ingress.annotations }}
+{{ toYaml .Values.fluentd.ingress.annotations | trim | indent 4 }}
+{{- end }}
+  labels:
+    app: {{ template "lexlogger.name" . }}
+    chart: {{ .Chart.Name }}-{{ .Chart.Version }}
+    component: {{ .Value.fluentd.name }}
+    heritage: {{ .Release.Service }}
+    release: {{ .Release.Name }}
+  name: {{ template "lexlogger.fluentd.fullname" . }}
+spec:
+  rules:
+  {{- range .Values.fluentd.ingress.hosts }}
+    {{- $url := splitList "/" . }}
+    - host: {{ first $url }}
+      http:
+        paths:
+          - path: /{{ rest $url | join "/" }}
+            backend:
+              serviceName: {{ $serviceName }}
+              servicePort: {{ $servicePort }}
+  {{- end -}}
+  {{- if .Values.fluentd.ingress.tls }}
+  tls:
+{{ toYaml .Values.fluentd.ingress.tls | indent 4 }}
+  {{- end -}}
+{{- end -}}

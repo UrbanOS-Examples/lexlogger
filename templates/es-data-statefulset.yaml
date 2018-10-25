@@ -1,0 +1,193 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  labels:
+    app: {{ template "lexlogger.name" . }}
+    chart: {{ .Chart.Name }}-{{ .Chart.Version }}
+    component: {{ .Values.elasticsearch.data.name }}
+    heritage: {{ .Release.Service }}
+    release: {{ .Release.Name }}
+  name: {{ template "lexlogger.elasticsearch.data.fullname" . }}
+spec:
+  selector:
+    matchLabels:
+      app: {{ template "lexlogger.name" . }}
+      component: {{ .Values.elasticsearch.data.name }}
+      release: {{ .Release.Name }}
+  serviceName: {{ template "lexlogger.elasticsearch.data.fullname" . }}
+  replicas: {{ .Values.elasticsearch.data.replicas }}
+  template:
+    metadata:
+      labels:
+        app: {{ template "lexlogger.name" . }}
+        component: {{ .Values.elasticsearch.data.name }}
+        release: {{ .Release.Name }}
+        {{- if .Values.elasticsearch.data.podAnnotations }}
+      annotations:
+{{ toYaml .Values.elasticsearch.data.podAnnotations | indent 8 }}
+        {{- end }}
+    spec:
+{{- if .Values.elasticsearch.data.priorityClassName }}
+      priorityClassName: "{{ .Values.elasticsearch.data.priorityClassName }}"
+{{- end }}
+      securityContext:
+        fsGroup: 1000
+      {{- if or .Values.elasticsearch.data.antiAffinity .Values.elasticsearch.data.nodeAffinity }}
+      affinity:
+      {{- end }}
+      {{- if eq .Values.elasticsearch.data.antiAffinity "hard" }}
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - topologyKey: "kubernetes.io/hostname"
+              labelSelector:
+                matchLabels:
+                  app: {{ template "lexlogger.name" . }}
+                  release: {{ .Release.Name }}
+                  component: {{ .Values.elasticsearch.data.name }}
+      {{- else if eq .Values.elasticsearch.data.antiAffinity "soft" }}
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 1
+            podAffinityTerm:
+              topologyKey: kubernetes.io/hostname
+              labelSelector:
+                matchLabels:
+                  app: {{ template "lexlogger.name" . }}
+                  release: {{ .Release.Name }}
+                  component: {{ .Values.elasticsearch.data.name }}
+      {{- end }}
+      {{- with .Values.elasticsearch.data.nodeAffinity }}
+        nodeAffinity:
+{{ toYaml . | indent 10 }}
+      {{- end }}
+{{- if .Values.elasticsearch.data.nodeSelector }}
+      nodeSelector:
+{{ toYaml .Values.elasticsearch.data.nodeSelector | indent 8 }}
+{{- end }}
+{{- if .Values.elasticsearch.data.tolerations }}
+      tolerations:
+{{ toYaml .Values.elasticsearch.data.tolerations | indent 8 }}
+{{- end }}
+      initContainers:
+      # see https://www.elastic.co/guide/en/elasticsearch/reference/current/vm-max-map-count.html
+      # and https://www.elastic.co/guide/en/elasticsearch/reference/current/setup-configuration-memory.html#mlockall
+      - name: "sysctl"
+        image: "{{ .Values.elasticsearch.initImage.repository }}:{{ .Values.elasticsearch.initImage.tag }}"
+        imagePullPolicy: {{ .Values.elasticsearch.initImage.pullPolicy | quote }}
+        command: ["sysctl", "-w", "vm.max_map_count=262144"]
+        securityContext:
+          privileged: true
+      - name: "chown"
+        image: "{{ .Values.elasticsearch.image.repository }}:{{ .Values.elasticsearch.image.tag }}"
+        imagePullPolicy: {{ .Values.elasticsearch.image.pullPolicy | quote }}
+        command:
+        - /bin/bash
+        - -c
+        - chown -R elasticsearch:elasticsearch /usr/share/elasticsearch/data &&
+          chown -R elasticsearch:elasticsearch /usr/share/elasticsearch/logs
+        securityContext:
+          runAsUser: 0
+        volumeMounts:
+        - mountPath: /usr/share/elasticsearch/data
+          name: data
+{{- if .Values.elasticsearch.extraInitContainers }}
+{{ tpl .Values.elasticsearch.extraInitContainers . | indent 6 }}
+{{- end }}
+      containers:
+      - name: elasticsearch
+        env:
+        - name: DISCOVERY_SERVICE
+          value: {{ template "lexlogger.fullname" . }}-discovery
+        - name: NODE_MASTER
+          value: "false"
+        - name: PROCESSORS
+          valueFrom:
+            resourceFieldRef:
+              resource: limits.cpu
+        - name: ES_JAVA_OPTS
+          value: "-Djava.net.preferIPv4Stack=true -Xms{{ .Values.elasticsearch.data.heapSize }} -Xmx{{ .Values.elasticsearch.data.heapSize }} {{ .Values.elasticsearch.cluster.additionalJavaOpts }}"
+        {{- range $key, $value :=  .Values.elasticsearch.cluster.env }}
+        - name: {{ $key }}
+          value: {{ $value | quote }}
+        {{- end }}
+        image: "{{ .Values.elasticsearch.image.repository }}:{{ .Values.elasticsearch.image.tag }}"
+        imagePullPolicy: {{ .Values.elasticsearch.image.pullPolicy | quote }}
+        ports:
+        - containerPort: 9300
+          name: transport
+{{ if .Values.elasticsearch.data.exposeHttp }}
+        - containerPort: 9200
+          name: http
+{{ end }}
+        resources:
+{{ toYaml .Values.elasticsearch.data.resources | indent 12 }}
+        readinessProbe:
+          httpGet:
+            path: /_cluster/health?local=true
+            port: 9200
+          initialDelaySeconds: 5
+        volumeMounts:
+        - mountPath: /usr/share/elasticsearch/data
+          name: data
+        - mountPath: /usr/share/elasticsearch/config/elasticsearch.yml
+          name: config
+          subPath: elasticsearch.yml
+        - name: config
+          mountPath: /pre-stop-hook.sh
+          subPath: pre-stop-hook.sh
+        - name: config
+          mountPath: /post-start-hook.sh
+          subPath: post-start-hook.sh
+{{- if .Values.elasticsearch.cluster.keystoreSecret }}
+        - name: keystore
+          mountPath: "/usr/share/elasticsearch/config/elasticsearch.keystore"
+          subPath: elasticsearch.keystore
+          readOnly: true
+{{- end }}
+        lifecycle:
+          preStop:
+            exec:
+              command: ["/bin/bash","/pre-stop-hook.sh"]
+          postStart:
+            exec:
+              command: ["/bin/bash","/post-start-hook.sh"]
+      terminationGracePeriodSeconds: {{ .Values.elasticsearch.data.terminationGracePeriodSeconds }}
+{{- if .Values.elasticsearch.image.pullSecrets }}
+      imagePullSecrets:
+      {{- range $pullSecret := .Values.elasticsearch.image.pullSecrets }}
+        - name: {{ $pullSecret }}
+      {{- end }}
+{{- end }}
+      volumes:
+      - name: config
+        configMap:
+          name: {{ template "lexlogger.fullname" . }}-elasticsearch
+{{- if .Values.elasticsearch.cluster.keystoreSecret }}
+      - name: keystore
+        secret:
+          secretName: {{ .Values.elasticsearch.cluster.keystoreSecret }}
+{{- end }}
+  {{- if not .Values.elasticsearch.data.persistence.enabled }}
+      - name: data
+        emptyDir: {}
+  {{- end }}
+  updateStrategy:
+    type: {{ .Values.elasticsearch.data.updateStrategy.type }}
+  {{- if .Values.elasticsearch.data.persistence.enabled }}
+  volumeClaimTemplates:
+  - metadata:
+      name: {{ .Values.elasticsearch.data.persistence.name }}
+    spec:
+      accessModes:
+        - {{ .Values.elasticsearch.data.persistence.accessMode | quote }}
+    {{- if .Values.elasticsearch.data.persistence.storageClass }}
+    {{- if (eq "-" .Values.elasticsearch.data.persistence.storageClass) }}
+      storageClassName: ""
+    {{- else }}
+      storageClassName: "{{ .Values.elasticsearch.data.persistence.storageClass }}"
+    {{- end }}
+    {{- end }}
+      resources:
+        requests:
+          storage: "{{ .Values.elasticsearch.data.persistence.size }}"
+  {{- end }}

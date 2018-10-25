@@ -1,0 +1,100 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ template "lexlogger.fluentd.fullname" . }}
+  labels:
+    app: {{ template "lexlogger.name" . }}
+    chart: {{ .Chart.Name }}-{{ .Chart.Version }}
+    component: {{ .Values.fluentd.name }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+spec:
+  replicas: {{ .Values.fluentd.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ template "lexlogger.name" . }}
+      component: {{ .Values.fluentd.name }}
+      release: {{ .Release.Name }}
+  {{- if .Values.fluentd.persistence.enabled }}
+  strategy:
+    type: Recreate
+  {{- end }}
+  template:
+    metadata:
+      labels:
+        app: {{ template "lexlogger.name" . }}
+        component: {{ .Values.fluentd.name }}
+        release: {{ .Release.Name }}
+    spec:
+{{- if .Values.fluentd.image.pullSecrets }}
+      imagePullSecrets:
+      {{- range $pullSecret := .Values.fluentd.image.pullSecrets }}
+        - name: {{ $pullSecret }}
+      {{- end }}
+{{- end }}
+      containers:
+      - name: {{ .Chart.Name }}-fluentd
+        image: "{{ .Values.fluentd.image.repository }}:{{ .Values.fluentd.image.tag }}"
+        imagePullPolicy: {{ .Values.fluentd.image.pullPolicy }}
+        env:
+          - name: OUTPUT_HOST
+            value: {{ template "lexlogger.elasticsearch.client.fullname" . }}
+          - name: OUTPUT_PORT
+            value: "9200"
+          - name: OUTPUT_BUFFER_CHUNK_LIMIT
+            value: {{ .Values.fluentd.output.buffer_chunk_limit | quote }}
+          - name: OUTPUT_BUFFER_QUEUE_LIMIT
+            value: {{ .Values.fluentd.output.buffer_queue_limit | quote }}
+          {{- range $key, $value := .Values.fluentd.env }}
+          - name: {{ $key | quote }}
+            value: {{ $value | quote }}
+          {{- end }}
+        resources:
+{{ toYaml .Values.fluentd.resources | indent 12 }}
+        ports:
+{{- range $port := .Values.fluentd.service.ports }}
+          - name: {{ $port.name }}
+            containerPort: {{ $port.containerPort }}
+            protocol: {{ $port.protocol }}
+{{- end }}
+          - name: http-input
+            containerPort: 9880
+            protocol: TCP
+        livenessProbe:
+          httpGet:
+            # Use percent encoding for query param.
+            # The value is {"log": "health check"}.
+            # the endpoint itself results in a new fluentd
+            # tag 'fluentd.pod-healthcheck'
+            path: /fluentd.pod.healthcheck?json=%7B%22log%22%3A+%22health+check%22%7D
+            port: 9880
+          initialDelaySeconds: 5
+          timeoutSeconds: 1
+        volumeMounts:
+        - name: config-volume-{{ template "lexlogger.fluentd.fullname" . }}
+          mountPath: /etc/fluent/config.d
+        - name: buffer
+          mountPath: "/var/log/fluentd-buffers"
+      volumes:
+        - name: config-volume-{{ template "lexlogger.fluentd.fullname" . }}
+          configMap:
+            name: {{ template "lexlogger.fluentd.fullname" . }}-config
+        - name: buffer
+          {{- if .Values.fluentd.persistence.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ template "lexlogger.fluentd.fullname" . }}
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
+    {{- with .Values.fluentd.nodeSelector }}
+      nodeSelector:
+{{ toYaml . | indent 8 }}
+    {{- end }}
+    {{- with .Values.fluentd.affinity }}
+      affinity:
+{{ toYaml . | indent 8 }}
+    {{- end }}
+    {{- with .Values.fluentd.tolerations }}
+      tolerations:
+{{ toYaml . | indent 8 }}
+    {{- end }}

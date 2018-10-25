@@ -54,12 +54,11 @@ def deployLoggingTo(environment) {
 
             helm init --client-only
             helm dependency update
-            helm upgrade --install logstack . \
-                --namespace=logstack \
+            helm upgrade --install lexlogger . \
+                --namespace=lexlogger \
                 --set global.ingress.annotations."alb\\.ingress\\.kubernetes\\.io\\/subnets"="${subnets}" \
                 --set global.ingress.annotations."alb\\.ingress\\.kubernetes\\.io\\/security\\-groups"="${albToClusterSG}" \
-                --set kibana.ingress.hosts[0]="kibana\\.${dns_zone}" \
-                --values run-config.yaml
+                --set kibana.ingress.hosts[0]="kibana\\.${dns_zone}"
         """.trim())
     }
 }
