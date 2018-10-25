@@ -2,7 +2,7 @@
 {{/*
 Expand the name of the chart.
 */}}
-{{- define "logstack.name" -}}
+{{- define "lexlogger.name" -}}
 {{- default .Chart.Name .Values.nameOverride | trunc 63 | trimSuffix "-" -}}
 {{- end -}}
 
@@ -10,7 +10,7 @@ Expand the name of the chart.
 Create a default fully qualified app name.
 We truncate at 63 chars because some Kubernetes name fields are limited to this (by the DNS naming spec).
 */}}
-{{- define "logstack.fullname" -}}
+{{- define "lexlogger.fullname" -}}
 {{- if .Values.fullnameOverride -}}
 {{- .Values.fullnameOverride | trunc 63 | trimSuffix "-" -}}
 {{- else -}}
@@ -27,7 +27,7 @@ We truncate at 63 chars because some Kubernetes name fields are limited to this 
 Create a fully qualified elasticsearch master name.
 */}}
 
-{{- define "logstack.elasticsearch.master.fullname" -}}
+{{- define "lexlogger.elasticsearch.master.fullname" -}}
 {{- if .Values.elasticsearch.master.fullnameOverride -}}
 {{- .Values.elasticsearch.master.fullnameOverride | trunc 63 | trimSuffix "-" -}}
 {{- else -}}
@@ -44,7 +44,7 @@ Create a fully qualified elasticsearch master name.
 Create a fully qualified elasticsearch data name.
 */}}
 
-{{- define "logstack.elasticsearch.data.fullname" -}}
+{{- define "lexlogger.elasticsearch.data.fullname" -}}
 {{- if .Values.elasticsearch.data.fullnameOverride -}}
 {{- .Values.elasticsearch.data.fullnameOverride | trunc 63 | trimSuffix "-" -}}
 {{- else -}}
@@ -61,7 +61,7 @@ Create a fully qualified elasticsearch data name.
 Create a fully qualified elasticsearch client name.
 */}}
 
-{{- define "logstack.elasticsearch.client.fullname" -}}
+{{- define "lexlogger.elasticsearch.client.fullname" -}}
 {{- if .Values.elasticsearch.client.fullnameOverride -}}
 {{- .Values.elasticsearch.client.fullnameOverride | trunc 63 | trimSuffix "-" -}}
 {{- else -}}
@@ -78,7 +78,7 @@ Create a fully qualified elasticsearch client name.
 Create a fully qualified fluentd name.
 We truncate at 63 chars because some Kubernetes name fields are limited to this (by the DNS naming spec).
 */}}
-{{- define "logstack.fluentd.fullname" -}}
+{{- define "lexlogger.fluentd.fullname" -}}
 {{- if .Values.fluentd.fullnameOverride -}}
 {{- .Values.fluentd.fullnameOverride | trunc 63 | trimSuffix "-" -}}
 {{- else -}}
@@ -95,7 +95,7 @@ We truncate at 63 chars because some Kubernetes name fields are limited to this 
 Create a fully qualified fluent-bit name.
 We truncate at 63 chars because some Kubernetes name fields are limited to this (by the DNS naming spec).
 */}}
-{{- define "logstack.fluentbit.fullname" -}}
+{{- define "lexlogger.fluentbit.fullname" -}}
 {{- if .Values.fluentbit.fullnameOverride -}}
 {{- .Values.fluentbit.fullnameOverride | trunc 63 | trimSuffix "-" -}}
 {{- else -}}
@@ -112,7 +112,7 @@ We truncate at 63 chars because some Kubernetes name fields are limited to this 
 Create a fully qualified kibana name.
 We truncate at 63 chars because some Kubernetes name fields are limited to this (by the DNS naming spec).
 */}}
-{{- define "logstack.kibana.fullname" -}}
+{{- define "lexlogger.kibana.fullname" -}}
 {{- if .Values.kibana.fullnameOverride -}}
 {{- .Values.kibana.fullnameOverride | trunc 63 | trimSuffix "-" -}}
 {{- else -}}
@@ -129,7 +129,7 @@ We truncate at 63 chars because some Kubernetes name fields are limited to this 
 Create a fully qualified externalDns name.
 We truncate at 63 chars because some Kubernetes name fields are limited to this (by the DNS naming spec).
 */}}
-{{- define "logstack.externalDns.fullname" -}}
+{{- define "lexlogger.externalDns.fullname" -}}
 {{- if .Values.externalDns.fullnameOverride -}}
 {{- .Values.externalDns.fullnameOverride | trunc 63 | trimSuffix "-" -}}
 {{- else -}}
@@ -145,7 +145,7 @@ We truncate at 63 chars because some Kubernetes name fields are limited to this 
 {{/*
 Return the appropriate apiVersion for networkpolicy.
 */}}
-{{- define "logstack.networkPolicy.apiVersion" -}}
+{{- define "lexlogger.networkPolicy.apiVersion" -}}
 {{- if semverCompare ">=1.4-0, <1.7-0" .Capabilities.KubeVersion.GitVersion -}}
 {{- print "extensions/v1beta1" -}}
 {{- else if semverCompare "^1.7-0" .Capabilities.KubeVersion.GitVersion -}}
@@ -156,9 +156,9 @@ Return the appropriate apiVersion for networkpolicy.
 {{/*
 Create the name of the service account to use for the fluentbit component
 */}}
-{{- define "logstack.serviceAccountName.fluentbit" -}}
+{{- define "lexlogger.serviceAccountName.fluentbit" -}}
 {{- if .Values.serviceAccounts.fluentbit.create -}}
-    {{ default (include "logstack.fluentbit.fullname" .) .Values.serviceAccounts.fluentbit.name }}
+    {{ default (include "lexlogger.fluentbit.fullname" .) .Values.serviceAccounts.fluentbit.name }}
 {{- else -}}
     {{ default "default" .Values.serviceAccounts.fluentbit.name }}
 {{- end -}}
@@ -167,9 +167,9 @@ Create the name of the service account to use for the fluentbit component
 {{/*
 Create the name of the service account to use for the kibana component
 */}}
-{{- define "logstack.serviceAccountName.kibana" -}}
+{{- define "lexlogger.serviceAccountName.kibana" -}}
 {{- if .Values.serviceAccounts.kibana.create -}}
-    {{ default (include "logstack.kibana.fullname" .) .Values.serviceAccounts.kibana.name }}
+    {{ default (include "lexlogger.kibana.fullname" .) .Values.serviceAccounts.kibana.name }}
 {{- else -}}
     {{ default "default" .Values.serviceAccounts.kibana.name }}
 {{- end -}}
@@ -180,7 +180,7 @@ Create the name of the service account to use for the externalDns component
 */}}
 {{- define "logtstack.serviceAccountName.externalDns" -}}
 {{- if .Values.serviceAccounts.externalDns.create -}}
-    {{ default (include "logstack.externalDns.fullname" .) .Values.serviceAccounts.externalDns.name }}
+    {{ default (include "lexlogger.externalDns.fullname" .) .Values.serviceAccounts.externalDns.name }}
 {{- else -}}
     {{ default "default" .Values.serviceAccounts.externalDns.name }}
 {{- end -}}
@@ -189,11 +189,11 @@ Create the name of the service account to use for the externalDns component
 {{/*
 Create chart name and version as used by the chart label.
 */}}
-{{- define "logstack.chart" -}}
+{{- define "lexlogger.chart" -}}
 {{- printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | trunc 63 | trimSuffix "-" -}}
 {{- end -}}
 
-{{- define "logstack.resources" -}}
+{{- define "lexlogger.resources" -}}
 limits:
   memory: {{ .Values.resourceLimits.memory }}
   cpu: {{ .Values.resourceLimits.cpu }}

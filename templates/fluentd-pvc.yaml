@@ -2,9 +2,9 @@
 kind: PersistentVolumeClaim
 apiVersion: v1
 metadata:
-  name: {{ template "logstack.fluentd.fullname" . }}
+  name: {{ template "lexlogger.fluentd.fullname" . }}
   labels:
-    app: {{ template "logstack.name" . }}
+    app: {{ template "lexlogger.name" . }}
     chart: {{ .Chart.Name }}-{{ .Chart.Version }}
     component: {{ .Values.fluentd.name }}
     release: {{ .Release.Name }}

@@ -3,12 +3,12 @@ apiVersion: policy/v1beta1
 kind: PodDisruptionBudget
 metadata:
   labels:
-    app: {{ template "logstack.name" . }}
+    app: {{ template "lexlogger.name" . }}
     chart: {{ .Chart.Name }}-{{ .Chart.Version }}
     component: {{ .Values.elasticsearch.master.name }}
     heritage: {{ .Release.Service }}
     release: {{ .Release.Name }}
-  name: {{ template "logstack.elasticsearch.master.fullname" . }}
+  name: {{ template "lexlogger.elasticsearch.master.fullname" . }}
 spec:
 {{- if .Values.elasticsearch.master.podDisruptionBudget.minAvailable }}
   minAvailable: {{ .Values.elasticsearch.master.podDisruptionBudget.minAvailable }}

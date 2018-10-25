@@ -3,12 +3,12 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   labels:
-    app: {{ template "logstack.name" . }}
+    app: {{ template "lexlogger.name" . }}
     chart: {{ .Chart.Name }}-{{ .Chart.Version }}
     component: {{ .Values.fluentbit.name }}
     heritage: {{ .Release.Service }}
     release: {{ .Release.Name }}
-  name: {{ template "logstack.fluentbit.fullname" . }}
+  name: {{ template "lexlogger.fluentbit.fullname" . }}
 rules:
   - apiGroups:
       - ""

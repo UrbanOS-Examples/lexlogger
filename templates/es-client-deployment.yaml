@@ -2,23 +2,23 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   labels:
-    app: {{ template "logstack.name" . }}
+    app: {{ template "lexlogger.name" . }}
     chart: {{ .Chart.Name }}-{{ .Chart.Version }}
     component: {{ .Values.elasticsearch.client.name }}
     heritage: {{ .Release.Service }}
     release: {{ .Release.Name }}
-  name: {{ template "logstack.elasticsearch.client.fullname" . }}
+  name: {{ template "lexlogger.elasticsearch.client.fullname" . }}
 spec:
   selector:
     matchLabels:
-      app: {{ template "logstack.name" . }}
+      app: {{ template "lexlogger.name" . }}
       component: {{ .Values.elasticsearch.client.name }}
       release: {{ .Release.Name }}
   replicas: {{ .Values.elasticsearch.client.replicas }}
   template:
     metadata:
       labels:
-        app: {{ template "logstack.name" . }}
+        app: {{ template "lexlogger.name" . }}
         component: {{ .Values.elasticsearch.client.name }}
         release: {{ .Release.Name }}
         {{- if .Values.elasticsearch.client.podAnnotations }}
@@ -40,7 +40,7 @@ spec:
             - topologyKey: "kubernetes.io/hostname"
               labelSelector:
                 matchLabels:
-                  app: {{ template "logstack.name" . }}
+                  app: {{ template "lexlogger.name" . }}
                   release: {{ .Release.Name }}
                   component: {{ .Values.elasticsearch.client.name }}
       {{- else if eq .Values.elasticsearch.client.antiAffinity "soft" }}
@@ -51,7 +51,7 @@ spec:
               topologyKey: kubernetes.io/hostname
               labelSelector:
                 matchLabels:
-                  app: {{ template "logstack.name" . }}
+                  app: {{ template "lexlogger.name" . }}
                   release: {{ .Release.Name }}
                   component: {{ .Values.elasticsearch.client.name }}
       {{- end }}
@@ -87,7 +87,7 @@ spec:
         - name: NODE_MASTER
           value: "false"
         - name: DISCOVERY_SERVICE
-          value: {{ template "logstack.fullname" . }}-discovery
+          value: {{ template "lexlogger.fullname" . }}-discovery
         - name: PROCESSORS
           valueFrom:
             resourceFieldRef:
@@ -146,7 +146,7 @@ spec:
       volumes:
       - name: config
         configMap:
-          name: {{ template "logstack.fullname" . }}-elasticsearch
+          name: {{ template "lexlogger.fullname" . }}-elasticsearch
 {{- if .Values.elasticsearch.cluster.keystoreSecret }}
       - name: keystore
         secret:

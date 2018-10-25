@@ -1,9 +1,9 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ template "logstack.kibana.fullname" . }}
+  name: {{ template "lexlogger.kibana.fullname" . }}
   labels:
-    app: {{ template "logstack.name" . }}
+    app: {{ template "lexlogger.name" . }}
     chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
     component: {{ .Values.kibana.name }}
     release: {{ .Release.Name }}

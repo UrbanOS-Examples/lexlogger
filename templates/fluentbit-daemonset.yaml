@@ -1,9 +1,9 @@
 apiVersion: apps/v1
 kind: DaemonSet
 metadata:
-  name: {{ template "logstack.fluentbit.fullname" . }}
+  name: {{ template "lexlogger.fluentbit.fullname" . }}
   labels:
-    app: {{ template "logstack.fullname" . }}
+    app: {{ template "lexlogger.fullname" . }}
     chart: {{ .Chart.Name }}-{{ .Chart.Version }}
     component: {{ .Values.fluentbit.name }}
     heritage: {{ .Release.Service }}
@@ -11,7 +11,7 @@ metadata:
 spec:
   selector:
     matchLabels:
-      app: {{ template "logstack.name" . }}
+      app: {{ template "lexlogger.name" . }}
       component: {{ .Values.fluentbit.name }}
       release: {{ .Release.Name }}
   updateStrategy:
@@ -19,7 +19,7 @@ spec:
   template:
     metadata:
       labels:
-        app: {{ template "logstack.name" . }}
+        app: {{ template "lexlogger.name" . }}
         component: {{ .Values.fluentbit.name }}
         release: {{ .Release.Name }}
       annotations:
@@ -32,7 +32,7 @@ spec:
       imagePullSecrets:
 {{ toYaml .Values.fluentbit.image.pullSecrets | indent 8 }}
 {{- end }}
-      serviceAccountName: {{ template "logstack.serviceAccountName.fluentbit" . }}
+      serviceAccountName: {{ template "lexlogger.serviceAccountName.fluentbit" . }}
       containers:
       - name: fluentbit
         image: "{{ .Values.fluentbit.image.repository }}:{{ .Values.fluentbit.image.tag }}"
@@ -97,7 +97,7 @@ spec:
 {{- end }}
       - name: config
         configMap:
-          name: {{ if .Values.fluentbit.existingConfigMap }}{{ .Values.fluentbit.existingConfigMap }}{{- else }}{{ template "logstack.fluentbit.fullname" . }}-config{{- end }}
+          name: {{ if .Values.fluentbit.existingConfigMap }}{{ .Values.fluentbit.existingConfigMap }}{{- else }}{{ template "lexlogger.fluentbit.fullname" . }}-config{{- end }}
 {{- if .Values.fluentbit.extraVolumes }}
 {{ toYaml .Values.fluentbit.extraVolumes | indent 6 }}
 {{- end }}

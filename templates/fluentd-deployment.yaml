@@ -1,9 +1,9 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ template "logstack.fluentd.fullname" . }}
+  name: {{ template "lexlogger.fluentd.fullname" . }}
   labels:
-    app: {{ template "logstack.name" . }}
+    app: {{ template "lexlogger.name" . }}
     chart: {{ .Chart.Name }}-{{ .Chart.Version }}
     component: {{ .Values.fluentd.name }}
     release: {{ .Release.Name }}
@@ -12,7 +12,7 @@ spec:
   replicas: {{ .Values.fluentd.replicaCount }}
   selector:
     matchLabels:
-      app: {{ template "logstack.name" . }}
+      app: {{ template "lexlogger.name" . }}
       component: {{ .Values.fluentd.name }}
       release: {{ .Release.Name }}
   {{- if .Values.fluentd.persistence.enabled }}
@@ -22,7 +22,7 @@ spec:
   template:
     metadata:
       labels:
-        app: {{ template "logstack.name" . }}
+        app: {{ template "lexlogger.name" . }}
         component: {{ .Values.fluentd.name }}
         release: {{ .Release.Name }}
     spec:
@@ -38,7 +38,7 @@ spec:
         imagePullPolicy: {{ .Values.fluentd.image.pullPolicy }}
         env:
           - name: OUTPUT_HOST
-            value: {{ template "logstack.elasticsearch.client.fullname" . }}
+            value: {{ template "lexlogger.elasticsearch.client.fullname" . }}
           - name: OUTPUT_PORT
             value: "9200"
           - name: OUTPUT_BUFFER_CHUNK_LIMIT
@@ -71,18 +71,18 @@ spec:
           initialDelaySeconds: 5
           timeoutSeconds: 1
         volumeMounts:
-        - name: config-volume-{{ template "logstack.fluentd.fullname" . }}
+        - name: config-volume-{{ template "lexlogger.fluentd.fullname" . }}
           mountPath: /etc/fluent/config.d
         - name: buffer
           mountPath: "/var/log/fluentd-buffers"
       volumes:
-        - name: config-volume-{{ template "logstack.fluentd.fullname" . }}
+        - name: config-volume-{{ template "lexlogger.fluentd.fullname" . }}
           configMap:
-            name: {{ template "logstack.fluentd.fullname" . }}-config
+            name: {{ template "lexlogger.fluentd.fullname" . }}-config
         - name: buffer
           {{- if .Values.fluentd.persistence.enabled }}
           persistentVolumeClaim:
-            claimName: {{ template "logstack.fluentd.fullname" . }}
+            claimName: {{ template "lexlogger.fluentd.fullname" . }}
           {{- else }}
           emptyDir: {}
           {{- end }}

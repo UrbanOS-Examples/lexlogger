@@ -2,24 +2,24 @@ apiVersion: apps/v1
 kind: StatefulSet
 metadata:
   labels:
-    app: {{ template "logstack.name" . }}
+    app: {{ template "lexlogger.name" . }}
     chart: {{ .Chart.Name }}-{{ .Chart.Version }}
     component: {{ .Values.elasticsearch.data.name }}
     heritage: {{ .Release.Service }}
     release: {{ .Release.Name }}
-  name: {{ template "logstack.elasticsearch.data.fullname" . }}
+  name: {{ template "lexlogger.elasticsearch.data.fullname" . }}
 spec:
   selector:
     matchLabels:
-      app: {{ template "logstack.name" . }}
+      app: {{ template "lexlogger.name" . }}
       component: {{ .Values.elasticsearch.data.name }}
       release: {{ .Release.Name }}
-  serviceName: {{ template "logstack.elasticsearch.data.fullname" . }}
+  serviceName: {{ template "lexlogger.elasticsearch.data.fullname" . }}
   replicas: {{ .Values.elasticsearch.data.replicas }}
   template:
     metadata:
       labels:
-        app: {{ template "logstack.name" . }}
+        app: {{ template "lexlogger.name" . }}
         component: {{ .Values.elasticsearch.data.name }}
         release: {{ .Release.Name }}
         {{- if .Values.elasticsearch.data.podAnnotations }}
@@ -41,7 +41,7 @@ spec:
             - topologyKey: "kubernetes.io/hostname"
               labelSelector:
                 matchLabels:
-                  app: {{ template "logstack.name" . }}
+                  app: {{ template "lexlogger.name" . }}
                   release: {{ .Release.Name }}
                   component: {{ .Values.elasticsearch.data.name }}
       {{- else if eq .Values.elasticsearch.data.antiAffinity "soft" }}
@@ -52,7 +52,7 @@ spec:
               topologyKey: kubernetes.io/hostname
               labelSelector:
                 matchLabels:
-                  app: {{ template "logstack.name" . }}
+                  app: {{ template "lexlogger.name" . }}
                   release: {{ .Release.Name }}
                   component: {{ .Values.elasticsearch.data.name }}
       {{- end }}
@@ -97,7 +97,7 @@ spec:
       - name: elasticsearch
         env:
         - name: DISCOVERY_SERVICE
-          value: {{ template "logstack.fullname" . }}-discovery
+          value: {{ template "lexlogger.fullname" . }}-discovery
         - name: NODE_MASTER
           value: "false"
         - name: PROCESSORS
@@ -161,7 +161,7 @@ spec:
       volumes:
       - name: config
         configMap:
-          name: {{ template "logstack.fullname" . }}-elasticsearch
+          name: {{ template "lexlogger.fullname" . }}-elasticsearch
 {{- if .Values.elasticsearch.cluster.keystoreSecret }}
       - name: keystore
         secret:

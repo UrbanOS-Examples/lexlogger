@@ -1,9 +1,9 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ template "logstack.fluentd.fullname" . }}-config
+  name: {{ template "lexlogger.fluentd.fullname" . }}-config
   labels:
-    app: {{ template "logstack.name" . }}
+    app: {{ template "lexlogger.name" . }}
     chart: {{ .Chart.Name }}-{{ .Chart.Version }}
     component: {{ .Values.fluentd.name }}
     release: {{ .Release.Name }}

@@ -1,4 +1,4 @@
-name: logstack
+name: lexlogger
 apiVersion: v1
 description: Combined elasticsearch, fluentd, and kibana stack for the Smart City OS
 version: 1.0.0

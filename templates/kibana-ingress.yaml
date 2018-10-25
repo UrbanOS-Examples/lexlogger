@@ -1,5 +1,5 @@
 {{- if .Values.kibana.ingress.enabled -}}
-{{- $serviceName := include "logstack.kibana.fullname" . -}}
+{{- $serviceName := include "lexlogger.kibana.fullname" . -}}
 {{- $servicePort := .Values.kibana.service.externalPort -}}
 apiVersion: extensions/v1beta1
 kind: Ingress
@@ -12,12 +12,12 @@ metadata:
 {{ toYaml .Values.kibana.ingress.annotations | trim | indent 4 }}
 {{- end }}
   labels:
-    app: {{ template "logstack.name" . }}
+    app: {{ template "lexlogger.name" . }}
     chart: {{ .Chart.Name }}-{{ .Chart.Version }}
     component: {{ .Values.kibana.name }}
     heritage: {{ .Release.Service }}
     release: {{ .Release.Name }}
-  name: {{ template "logstack.kibana.fullname" . }}
+  name: {{ template "lexlogger.kibana.fullname" . }}
 spec:
   rules:
   {{- range .Values.kibana.ingress.hosts }}

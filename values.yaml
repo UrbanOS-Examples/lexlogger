@@ -17,7 +17,6 @@ serviceAccounts:
     name:
 
 elasticsearch:
-
   image:
     repository: "docker.elastic.co/elasticsearch/elasticsearch-oss"
     tag: "6.4.2"
@@ -29,7 +28,7 @@ elasticsearch:
     pullPolicy: "Always"
 
   cluster:
-    name: "es-logstack"
+    name: "es-lexlogger"
     # If you want X-Pack installed, switch to an image that includes it, enable this option and toggle the features you want
     # enabled in the environment variables outlined in the README
     xpackEnable: false
@@ -47,7 +46,7 @@ elasticsearch:
 
   client:
     name: es-client
-    replicas: 2
+    replicas: 1
     serviceType: ClusterIP
     loadBalancerIP: {}
     loadBalancerSourceRanges: {}
@@ -78,7 +77,7 @@ elasticsearch:
   master:
     name: es-master
     exposeHttp: false
-    replicas: 3
+    replicas: 2
     heapSize: "512m"
     persistence:
       enabled: true
@@ -102,7 +101,7 @@ elasticsearch:
     #   example: master-foo
     podDisruptionBudget:
       enabled: false
-      minAvailable: 2  # Same as `cluster.env.MINIMUM_MASTER_NODES`
+      minAvailable: 1  # Same as `cluster.env.MINIMUM_MASTER_NODES`
       # maxUnavailable: 1
     updateStrategy:
       type: OnDelete
@@ -230,6 +229,13 @@ fluentd:
     buffer_queue_limit: 8
 
   env: {}
+
+  resources:
+    limits:
+      memory: 200Mi
+    requests:
+      cpu: 100m
+      memory: 200Mi
 
   service:
     type: ClusterIP
@@ -460,8 +466,8 @@ kibana:
     # - https://github.com/sivasamyk/logtrail/releases/download/v0.1.29/logtrail-6.4.0-0.1.29.zip
     # - other_plugin
 
-# helm upgrade --install logstack . \
-#  --namespace logstack \
+# helm upgrade --install lexlogger . \
+#  --namespace lexlogger \
 #  --set global.ingress.annotations."alb\.ingress\.kubernetes\.io\/subnets"="${SUBNETS//,/\\,}" \
 #  --set global.ingress.annotations."alb\.ingress\.kubernetes\.io\/security\-groups"="${SECURITY_GROUPS}" \
 #  --set kibana.ingress.hosts[0]="kibana\.${DNS_ZONE}" \
