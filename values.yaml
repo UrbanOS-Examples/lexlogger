@@ -317,13 +317,6 @@ fluentd:
           overflow_action block
         </buffer>
       </match>
-  resources:
-    limits:
-      cpu: 500m
-      memory: 200Mi
-    requests:
-      cpu: 500m
-      memory: 200Mi
 
   ## Persist data to a persistent volume
   persistence:
