@@ -50,7 +50,7 @@ spec:
             value: {{ $value | quote }}
           {{- end }}
         resources:
-{{ toYaml .Values.fluentd.resources | indent 12 }}
+{{ toYaml .Values.fluentd.resources | indent 10 }}
         ports:
 {{- range $port := .Values.fluentd.service.ports }}
           - name: {{ $port.name }}
