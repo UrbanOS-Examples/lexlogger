@@ -189,9 +189,10 @@ fluentbit:
 
   resources:
     limits:
+      cpu: 100m
       memory: 100Mi
     requests:
-      cpu: 100m
+      cpu: 10m
       memory: 100Mi
 
   tolerations: []
@@ -232,9 +233,10 @@ fluentd:
 
   resources:
     limits:
+      cpu: 100m
       memory: 200Mi
     requests:
-      cpu: 100m
+      cpu: 25m
       memory: 200Mi
 
   service:
