@@ -19,6 +19,9 @@ metadata:
     release: {{ .Release.Name }}
   name: {{ template "lexlogger.kibana.fullname" . }}
 spec:
+  backend:
+    serviceName: {{ $serviceName }}
+    servicePort: {{ $servicePort }}
   rules:
   {{- range .Values.kibana.ingress.hosts }}
     {{- $url := splitList "/" . }}
