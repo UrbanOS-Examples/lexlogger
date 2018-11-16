@@ -19,6 +19,9 @@ metadata:
     release: {{ .Release.Name }}
   name: {{ template "lexlogger.fluentd.fullname" . }}
 spec:
+  backend:
+    serviceName: {{ $serviceName }}
+    servicePort: {{ $servicePort }}
   rules:
   {{- range .Values.fluentd.ingress.hosts }}
     {{- $url := splitList "/" . }}
