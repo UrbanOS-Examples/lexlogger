@@ -52,7 +52,7 @@ spec:
         command:
         - "bash"
         - "-c"
-        - "fluent-gem install fluent-plugin-dedot_filter && /run.sh"
+        - "fluent-gem install fluent-plugin-dedot_filter -v 1.0.0 && /run.sh"
         resources:
 {{ toYaml .Values.fluentd.resources | indent 10 }}
         ports:

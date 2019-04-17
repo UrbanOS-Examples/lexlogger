@@ -80,6 +80,16 @@ spec:
 {{ tpl .Values.elasticsearch.extraInitContainers . | indent 6 }}
 {{- end }}
       containers:
+      - name: prometheus-es-exporter
+        image: braedon/prometheus-es-exporter:0.5.1
+        volumeMounts:
+        - mountPath: /usr/src/app/exporter.cfg
+          name: config
+          subPath: exporter.cfg
+        command: ["prometheus-es-exporter", "-p", "9206", "-e", "{{ template "lexlogger.elasticsearch.client.fullname" . }}:9200", "-c", "/usr/src/app/exporter.cfg"]
+        ports:
+        - containerPort: 9206
+          name: es-metrics
       - name: elasticsearch
         env:
         - name: NODE_DATA
