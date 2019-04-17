@@ -58,7 +58,9 @@ def deployLoggingTo(environment) {
                 --namespace=lexlogger \
                 --set global.ingress.annotations."alb\\.ingress\\.kubernetes\\.io\\/subnets"="${subnets}" \
                 --set global.ingress.annotations."alb\\.ingress\\.kubernetes\\.io\\/security\\-groups"="${albToClusterSG}" \
-                --set kibana.ingress.hosts[0]="kibana\\.${dns_zone}"
+                --set kibana.ingress.hosts[0]="kibana\\.${dns_zone}" \
+                --values values.yaml \
+                --values values-curator.yaml
         """.trim())
     }
 }

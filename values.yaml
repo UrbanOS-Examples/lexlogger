@@ -267,7 +267,7 @@ fluentd:
       # Prevent fluentd from handling records containing its own logs. Otherwise
       # it can lead to an infinite loop, when error in sending one message generates
       # another message which also fails to be sent and so on.
-      <match fluentd.**>
+      <match **fluentd**>
         @type null
       </match>
       # Used for health checking
@@ -295,11 +295,19 @@ fluentd:
         port 24224
         bind 0.0.0.0
       </source>
+    filter.conf: |
+      <filter **>
+        @type             dedot
+        @log_level debug
+        de_dot            true
+        de_dot_separator  _
+        de_dot_nested     true
+      </filter>
     output.conf: |
       <match **>
         @id elasticsearch
         @type elasticsearch
-        @log_level info
+        @log_level warn
         include_tag_key true
         # Replace with the host/port to your Elasticsearch cluster.
         host "#{ENV['OUTPUT_HOST']}"
@@ -316,7 +324,7 @@ fluentd:
           retry_max_interval 30
           chunk_limit_size "#{ENV['OUTPUT_BUFFER_CHUNK_LIMIT']}"
           queue_limit_length "#{ENV['OUTPUT_BUFFER_QUEUE_LIMIT']}"
-          overflow_action block
+          overflow_action drop_oldest_chunk
         </buffer>
       </match>
 
@@ -340,7 +348,7 @@ fluentd:
 
 kibana:
   name: kibana
-  
+
   image:
     repository: "docker.elastic.co/kibana/kibana-oss"
     tag: "6.4.2"

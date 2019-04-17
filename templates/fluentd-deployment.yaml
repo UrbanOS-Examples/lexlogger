@@ -49,6 +49,10 @@ spec:
           - name: {{ $key | quote }}
             value: {{ $value | quote }}
           {{- end }}
+        command:
+        - "bash"
+        - "-c"
+        - "fluent-gem install fluent-plugin-dedot_filter && /run.sh"
         resources:
 {{ toYaml .Values.fluentd.resources | indent 10 }}
         ports:
