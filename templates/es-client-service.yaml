@@ -9,7 +9,7 @@ metadata:
     release: {{ .Release.Name }}
   name: {{ template "lexlogger.elasticsearch.client.fullname" . }}
   annotations:
-    prometheus.io/port: 9206
+    prometheus.io/port: "9206"
     prometheus.io/scrape: "true"
 {{- if .Values.elasticsearch.client.serviceAnnotations }}
 {{ toYaml .Values.elasticsearch.client.serviceAnnotations | indent 4 }}

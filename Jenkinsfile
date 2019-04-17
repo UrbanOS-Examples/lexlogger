@@ -1,5 +1,5 @@
 library(
-    identifier: 'pipeline-lib@4.3.0',
+    identifier: 'pipeline-lib@4.5.0',
     retriever: modernSCM([$class: 'GitSCMSource',
                           remote: 'https://github.com/SmartColumbusOS/pipeline-lib',
                           credentialsId: 'jenkins-github-user'])
@@ -25,11 +25,9 @@ node('infrastructure') {
         }
 
          doStageIfPromoted('Deploy to Staging') {
-            def promotionTag = scos.releaseCandidateNumber()
-
             deployLoggingTo('staging')
 
-            scos.applyAndPushGitHubTag(promotionTag)
+            scos.applyAndPushGitHubTag('staging')
         }
 
         doStageIfRelease('Deploy to Production') {
