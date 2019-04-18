@@ -8,6 +8,9 @@ metadata:
     component: {{ .Values.fluentd.name }}
     release: {{ .Release.Name }}
     heritage: {{ .Release.Service }}
+  annotations:
+    prometheus.io/port: "24231"
+    prometheus.io/scrape: "true"
 spec:
   type: {{ .Values.fluentd.service.type }}
   ports:

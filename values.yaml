@@ -288,6 +288,7 @@ fluentd:
     system.conf: |-
       <system>
         root_dir /tmp/fluentd-buffers/
+        log_level warn
       </system>
     forward-input.conf: |
       <source>
@@ -305,28 +306,71 @@ fluentd:
       </filter>
     output.conf: |
       <match **>
-        @id elasticsearch
-        @type elasticsearch
-        @log_level warn
-        include_tag_key true
-        # Replace with the host/port to your Elasticsearch cluster.
-        host "#{ENV['OUTPUT_HOST']}"
-        port "#{ENV['OUTPUT_PORT']}"
-        logstash_format true
-        <buffer>
-          @type file
-          path /var/log/fluentd-buffers/kubernetes.system.buffer
-          flush_mode interval
-          retry_type exponential_backoff
-          flush_thread_count 2
-          flush_interval 5s
-          retry_forever
-          retry_max_interval 30
-          chunk_limit_size "#{ENV['OUTPUT_BUFFER_CHUNK_LIMIT']}"
-          queue_limit_length "#{ENV['OUTPUT_BUFFER_QUEUE_LIMIT']}"
-          overflow_action drop_oldest_chunk
-        </buffer>
+        @type copy
+        <store>
+          @id elasticsearch
+          @type elasticsearch
+          @log_level warn
+          include_tag_key true
+          # Replace with the host/port to your Elasticsearch cluster.
+          host "#{ENV['OUTPUT_HOST']}"
+          port "#{ENV['OUTPUT_PORT']}"
+          logstash_format true
+          <buffer>
+            @type file
+            path /var/log/fluentd-buffers/kubernetes.system.buffer
+            flush_mode interval
+            retry_type exponential_backoff
+            flush_thread_count 2
+            flush_interval 5s
+            retry_forever
+            retry_max_interval 30
+            chunk_limit_size "#{ENV['OUTPUT_BUFFER_CHUNK_LIMIT']}"
+            queue_limit_length "#{ENV['OUTPUT_BUFFER_QUEUE_LIMIT']}"
+            overflow_action drop_oldest_chunk
+          </buffer>
+        </store>
+        <store>
+          @type prometheus
+          <metric>
+            name fluentd_output_status_num_records_total
+            type counter
+            desc The total number of outgoing records
+            <labels>
+              tag ${tag}
+              hostname ${hostname}
+            </labels>
+          </metric>
+        </store>
       </match>
+
+    metrics.conf: |
+      <filter **>
+        @type prometheus
+        @log_level warn
+        <metric>
+          name fluentd_input_status_num_records_total
+          type counter
+          desc The total number of incoming records
+          <labels>
+            tag ${tag}
+            hostname ${hostname}
+          </labels>
+        </metric>
+      </filter>
+      <source>
+        @type prometheus
+        bind 0.0.0.0
+        port 24231
+        metrics_path /metrics
+      </source>
+      <source>
+        @type prometheus_output_monitor
+        interval 10
+        <labels>
+          hostname ${hostname}
+        </labels>
+      </source>
 
   ## Persist data to a persistent volume
   persistence:
