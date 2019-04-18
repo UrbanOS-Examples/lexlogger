@@ -21,8 +21,9 @@ spec:
         app: {{ template "lexlogger.name" . }}
         component: {{ .Values.elasticsearch.client.name }}
         release: {{ .Release.Name }}
-        {{- if .Values.elasticsearch.client.podAnnotations }}
       annotations:
+        checksum/configmap: {{ include (print $.Template.BasePath "/es-configmap.yaml") . | sha256sum }}
+        {{- if .Values.elasticsearch.client.podAnnotations }}
 {{ toYaml .Values.elasticsearch.client.podAnnotations | indent 8 }}
         {{- end }}
     spec:

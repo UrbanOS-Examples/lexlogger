@@ -25,6 +25,8 @@ spec:
         app: {{ template "lexlogger.name" . }}
         component: {{ .Values.fluentd.name }}
         release: {{ .Release.Name }}
+      annotations:
+        checksum/configmap: {{ include (print $.Template.BasePath "/fluentd-configmap.yaml") . | sha256sum }}
     spec:
 {{- if .Values.fluentd.image.pullSecrets }}
       imagePullSecrets:
