@@ -58,6 +58,7 @@ def deployLoggingTo(environment) {
                 --set global.ingress.annotations."alb\\.ingress\\.kubernetes\\.io\\/subnets"="${subnets}" \
                 --set global.ingress.annotations."alb\\.ingress\\.kubernetes\\.io\\/security\\-groups"="${albToClusterSG}" \
                 --set global.ingress.annotations."alb\\.ingress\\.kubernetes\\.io\\/certificate-arn"="${certificateARN}" \
+                --set kibana.ingress.hosts[0]="kibana\\.${dns_zone}" \
                 --values values.yaml \
                 --values values-curator.yaml
         """.trim())
