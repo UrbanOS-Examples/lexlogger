@@ -1,5 +1,5 @@
 library(
-    identifier: 'pipeline-lib@4.3.0',
+    identifier: 'pipeline-lib@4.5.0',
     retriever: modernSCM([$class: 'GitSCMSource',
                           remote: 'https://github.com/SmartColumbusOS/pipeline-lib',
                           credentialsId: 'jenkins-github-user'])
@@ -25,11 +25,9 @@ node('infrastructure') {
         }
 
          doStageIfPromoted('Deploy to Staging') {
-            def promotionTag = scos.releaseCandidateNumber()
-
             deployLoggingTo('staging')
 
-            scos.applyAndPushGitHubTag(promotionTag)
+            scos.applyAndPushGitHubTag('staging')
         }
 
         doStageIfRelease('Deploy to Production') {
@@ -49,6 +47,7 @@ def deployLoggingTo(environment) {
         def subnets = terraformOutputs.public_subnets.value.join(/\\,/)
         def albToClusterSG = terraformOutputs.allow_all_security_group.value
         def dns_zone = environment + '.internal.smartcolumbusos.com'
+        def certificateARN = terraformOutputs.tls_certificate_arn.value
 
         sh("""#!/bin/bash
 
@@ -58,7 +57,9 @@ def deployLoggingTo(environment) {
                 --namespace=lexlogger \
                 --set global.ingress.annotations."alb\\.ingress\\.kubernetes\\.io\\/subnets"="${subnets}" \
                 --set global.ingress.annotations."alb\\.ingress\\.kubernetes\\.io\\/security\\-groups"="${albToClusterSG}" \
-                --set kibana.ingress.hosts[0]="kibana\\.${dns_zone}"
+                --set global.ingress.annotations."alb\\.ingress\\.kubernetes\\.io\\/certificate-arn"="${certificateARN}" \
+                --values values.yaml \
+                --values values-curator.yaml
         """.trim())
     }
 }

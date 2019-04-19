@@ -46,13 +46,10 @@ elasticsearch:
 
   client:
     name: es-client
-    replicas: 1
+    replicas: 2
     serviceType: ClusterIP
     loadBalancerIP: {}
     loadBalancerSourceRanges: {}
-  ## (dict) If specified, apply these annotations to the client service
-  #  serviceAnnotations:
-  #    example: client-svc-foo
     heapSize: "512m"
     antiAffinity: "soft"
     nodeAffinity: {}
@@ -60,11 +57,11 @@ elasticsearch:
     tolerations: []
     resources:
       limits:
-        cpu: "250m"
-        memory: "1024Mi"
+        cpu: "500m"
+        memory: "1536Mi"
       requests:
-        cpu: "100m"
-        memory: "1024Mi"
+        cpu: "250m"
+        memory: "1536Mi"
     priorityClassName: ""
     ## (dict) If specified, apply these annotations to each client Pod
     # podAnnotations:
@@ -91,10 +88,10 @@ elasticsearch:
     resources:
       limits:
         cpu: "250m"
-        memory: "1024Mi"
+        memory: "1536Mi"
       requests:
         cpu: "100m"
-        memory: "1024Mi"
+        memory: "1536Mi"
     priorityClassName: ""
     ## (dict) If specified, apply these annotations to each master Pod
     # podAnnotations:
@@ -104,13 +101,14 @@ elasticsearch:
       minAvailable: 1  # Same as `cluster.env.MINIMUM_MASTER_NODES`
       # maxUnavailable: 1
     updateStrategy:
-      type: OnDelete
+      type: RollingUpdate
 
   data:
     name: es-data
     exposeHttp: false
     replicas: 2
-    heapSize: "1536m"
+    heapSize: "3072m"
+    heapNewSize: "512m"
     persistence:
       enabled: true
       accessMode: ReadWriteOnce
@@ -123,11 +121,11 @@ elasticsearch:
     tolerations: []
     resources:
       limits:
-        cpu: "250m"
-        memory: "2048Mi"
+        cpu: "1000m"
+        memory: "4096Mi"
       requests:
-        cpu: "100m"
-        memory: "2048Mi"
+        cpu: "500m"
+        memory: "4096Mi"
     priorityClassName: ""
     ## (dict) If specified, apply these annotations to each data Pod
     # podAnnotations:
@@ -137,7 +135,7 @@ elasticsearch:
       # minAvailable: 1
       maxUnavailable: 1
     updateStrategy:
-      type: OnDelete
+      type: RollingUpdate
 
   ## Additional init containers
   extraInitContainers: |
@@ -219,6 +217,7 @@ fluentbit:
 
 fluentd:
   name: fluentd
+  replicaCount: 2
 
   image:
     repository: gcr.io/google-containers/fluentd-elasticsearch
@@ -233,10 +232,10 @@ fluentd:
 
   resources:
     limits:
-      cpu: 100m
+      cpu: 500m
       memory: 200Mi
     requests:
-      cpu: 25m
+      cpu: 250m
       memory: 200Mi
 
   service:
@@ -267,7 +266,7 @@ fluentd:
       # Prevent fluentd from handling records containing its own logs. Otherwise
       # it can lead to an infinite loop, when error in sending one message generates
       # another message which also fails to be sent and so on.
-      <match fluentd.**>
+      <match **fluentd**>
         @type null
       </match>
       # Used for health checking
@@ -288,6 +287,7 @@ fluentd:
     system.conf: |-
       <system>
         root_dir /tmp/fluentd-buffers/
+        log_level warn
       </system>
     forward-input.conf: |
       <source>
@@ -295,30 +295,79 @@ fluentd:
         port 24224
         bind 0.0.0.0
       </source>
+    filter.conf: |
+      <filter **>
+        @type             dedot
+        de_dot            true
+        de_dot_separator  _
+        de_dot_nested     true
+      </filter>
     output.conf: |
       <match **>
-        @id elasticsearch
-        @type elasticsearch
-        @log_level info
-        include_tag_key true
-        # Replace with the host/port to your Elasticsearch cluster.
-        host "#{ENV['OUTPUT_HOST']}"
-        port "#{ENV['OUTPUT_PORT']}"
-        logstash_format true
-        <buffer>
-          @type file
-          path /var/log/fluentd-buffers/kubernetes.system.buffer
-          flush_mode interval
-          retry_type exponential_backoff
-          flush_thread_count 2
-          flush_interval 5s
-          retry_forever
-          retry_max_interval 30
-          chunk_limit_size "#{ENV['OUTPUT_BUFFER_CHUNK_LIMIT']}"
-          queue_limit_length "#{ENV['OUTPUT_BUFFER_QUEUE_LIMIT']}"
-          overflow_action block
-        </buffer>
+        @type copy
+        <store>
+          @id elasticsearch
+          @type elasticsearch
+          @log_level warn
+          include_tag_key true
+          # Replace with the host/port to your Elasticsearch cluster.
+          host "#{ENV['OUTPUT_HOST']}"
+          port "#{ENV['OUTPUT_PORT']}"
+          logstash_format true
+          <buffer>
+            @type memory
+            flush_mode interval
+            retry_type exponential_backoff
+            flush_thread_count 8
+            flush_interval 5s
+            retry_forever
+            retry_max_interval 30
+            chunk_limit_size "#{ENV['OUTPUT_BUFFER_CHUNK_LIMIT']}"
+            queue_limit_length "#{ENV['OUTPUT_BUFFER_QUEUE_LIMIT']}"
+            overflow_action drop_oldest_chunk
+          </buffer>
+        </store>
+        <store>
+          @type prometheus
+          <metric>
+            name fluentd_output_status_num_records_total
+            type counter
+            desc The total number of outgoing records
+            <labels>
+              tag ${tag}
+              hostname ${hostname}
+            </labels>
+          </metric>
+        </store>
       </match>
+
+    metrics.conf: |
+      <filter **>
+        @type prometheus
+        @log_level warn
+        <metric>
+          name fluentd_input_status_num_records_total
+          type counter
+          desc The total number of incoming records
+          <labels>
+            tag ${tag}
+            hostname ${hostname}
+          </labels>
+        </metric>
+      </filter>
+      <source>
+        @type prometheus
+        bind 0.0.0.0
+        port 24231
+        metrics_path /metrics
+      </source>
+      <source>
+        @type prometheus_output_monitor
+        interval 10
+        <labels>
+          hostname ${hostname}
+        </labels>
+      </source>
 
   ## Persist data to a persistent volume
   persistence:
@@ -340,7 +389,7 @@ fluentd:
 
 kibana:
   name: kibana
-  
+
   image:
     repository: "docker.elastic.co/kibana/kibana-oss"
     tag: "6.4.2"
@@ -365,6 +414,7 @@ kibana:
       server.name: kibana
       server.host: "0"
       elasticsearch.url: http://elasticsearch:9200
+      logging.quiet: true
 
       ## Custom config properties below
       ## Ref: https://www.elastic.co/guide/en/kibana/current/settings.html
@@ -396,6 +446,8 @@ kibana:
       # - chart-example.local
     annotations:
       alb.ingress.kubernetes.io/healthcheck-path: /status
+      alb.ingress.kubernetes.io/actions.redirect: '{"Type": "redirect", "RedirectConfig":{"Protocol": "HTTPS", "Port": "443", "StatusCode": "HTTP_301"}}'
+      alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS": 443}]'
     #   kubernetes.io/tls-acme: "true"
     # tls:
       # - secretName: chart-example-tls

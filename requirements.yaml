@@ -1,0 +1,4 @@
+dependencies:
+  - name: elasticsearch-curator
+    version: 1.4.0
+    repository: "@stable"

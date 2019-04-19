@@ -25,6 +25,8 @@ spec:
         app: {{ template "lexlogger.name" . }}
         component: {{ .Values.fluentd.name }}
         release: {{ .Release.Name }}
+      annotations:
+        checksum/configmap: {{ include (print $.Template.BasePath "/fluentd-configmap.yaml") . | sha256sum }}
     spec:
 {{- if .Values.fluentd.image.pullSecrets }}
       imagePullSecrets:
@@ -49,6 +51,10 @@ spec:
           - name: {{ $key | quote }}
             value: {{ $value | quote }}
           {{- end }}
+        command:
+        - "bash"
+        - "-c"
+        - "fluent-gem install fluent-plugin-dedot_filter -v 1.0.0 && /run.sh"
         resources:
 {{ toYaml .Values.fluentd.resources | indent 10 }}
         ports:
@@ -57,6 +63,9 @@ spec:
             containerPort: {{ $port.containerPort }}
             protocol: {{ $port.protocol }}
 {{- end }}
+          - name: metrics
+            containerPort: 24231
+            protocol: TCP
           - name: http-input
             containerPort: 9880
             protocol: TCP

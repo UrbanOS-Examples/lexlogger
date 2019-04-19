@@ -22,8 +22,9 @@ spec:
         app: {{ template "lexlogger.name" . }}
         component: {{ .Values.elasticsearch.data.name }}
         release: {{ .Release.Name }}
-        {{- if .Values.elasticsearch.data.podAnnotations }}
       annotations:
+        checksum/configmap: {{ include (print $.Template.BasePath "/es-configmap.yaml") . | sha256sum }}
+        {{- if .Values.elasticsearch.data.podAnnotations }}
 {{ toYaml .Values.elasticsearch.data.podAnnotations | indent 8 }}
         {{- end }}
     spec:
@@ -105,7 +106,7 @@ spec:
             resourceFieldRef:
               resource: limits.cpu
         - name: ES_JAVA_OPTS
-          value: "-Djava.net.preferIPv4Stack=true -Xms{{ .Values.elasticsearch.data.heapSize }} -Xmx{{ .Values.elasticsearch.data.heapSize }} {{ .Values.elasticsearch.cluster.additionalJavaOpts }}"
+          value: "-Djava.net.preferIPv4Stack=true -Xms{{ .Values.elasticsearch.data.heapSize }} -Xmx{{ .Values.elasticsearch.data.heapSize }} -XX:NewSize={{.Values.elasticsearch.data.heapNewSize}} {{ .Values.elasticsearch.cluster.additionalJavaOpts }}"
         {{- range $key, $value :=  .Values.elasticsearch.cluster.env }}
         - name: {{ $key }}
           value: {{ $value | quote }}
@@ -127,6 +128,9 @@ spec:
             port: 9200
           initialDelaySeconds: 5
         volumeMounts:
+        - mountPath: /usr/share/elasticsearch/config/log4j2.properties
+          name: config
+          subPath: log4j2.properties
         - mountPath: /usr/share/elasticsearch/data
           name: data
         - mountPath: /usr/share/elasticsearch/config/elasticsearch.yml

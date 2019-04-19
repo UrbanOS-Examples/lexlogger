@@ -56,7 +56,7 @@ data:
     appender.console.name = console
     appender.console.layout.type = PatternLayout
     appender.console.layout.pattern = [%d{ISO8601}][%-5p][%-25c{1.}] %marker%m%n
-    rootLogger.level = info
+    rootLogger.level = warn
     rootLogger.appenderRef.console.ref = console
     logger.searchguard.name = com.floragunn
     logger.searchguard.level = info
@@ -95,3 +95,39 @@ data:
       }"
     fi
     echo "Node ${NODE_NAME} is ready to be used"
+  exporter.cfg: |-
+    #https://github.com/braedon/prometheus-es-exporter/blob/master/exporter.cfg
+    [DEFAULT]
+    QueryIntervalSecs = 15
+    QueryTimeoutSecs = 10
+    QueryIndices = _all
+
+    [query_all]
+    QueryJson = {
+            "size": 0,
+            "query": {
+                "match_all": {}
+            }
+        }
+
+    [query_terms]
+    QueryIntervalSecs = 20
+    QueryTimeoutSecs = 15
+    QueryIndices = <logstash-{now/d}>
+    QueryJson = {
+            "size": 0,
+            "query": {
+                "match_all": {}
+            },
+            "aggs": {
+                "group1_terms": {
+                    "terms": {"field": "group1"},
+                    "aggs": {
+                        "val_sum": {
+                            "sum": {"field": "val"}
+                        }
+                    }
+                }
+            }
+        }
+
