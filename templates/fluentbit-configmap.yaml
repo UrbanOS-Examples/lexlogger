@@ -53,6 +53,7 @@ data:
 {{- if .Values.fluentbit.filter.enableExclude }}
         K8S-Logging.Exclude On
 {{- end }}
+        Parser level
     [OUTPUT]
         Name          forward
         Match         *

@@ -316,6 +316,10 @@ fluentd:
           host "#{ENV['OUTPUT_HOST']}"
           port "#{ENV['OUTPUT_PORT']}"
           logstash_format true
+          <parse>
+            @type regexp
+            expression /\[?(?<level>debug|info|warn|error|trace)\]?/i
+          </parse>
           <buffer>
             @type memory
             flush_mode interval

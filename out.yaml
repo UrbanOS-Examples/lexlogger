@@ -1,0 +1,1231 @@
+---
+# Source: lexlogger/charts/elasticsearch-curator/templates/configmap.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: RELEASE-NAME-elasticsearch-curator-config
+  labels:
+    app: elasticsearch-curator
+    chart: elasticsearch-curator-1.4.0
+    release: RELEASE-NAME
+    heritage: Tiller
+data:
+  action_file.yml:   |-
+    ---
+    actions:
+      1:
+        action: delete_indices
+        description: "Clean up ES by deleting old indices"
+        options:
+          timeout_override:
+          continue_if_exception: False
+          disable_action: False
+          ignore_empty_list: True
+        filters:
+        - filtertype: age
+          source: name
+          direction: older
+          timestring: '%Y.%m.%d'
+          unit: days
+          unit_count: 7
+          field:
+          stats_result:
+          epoch:
+          exclude: False
+  
+  config.yml:   |-
+    ---
+    client:
+      hosts:
+        - CHANGEME.host
+      port: 9200
+      # url_prefix:
+      # use_ssl: True
+      # certificate:
+      # client_cert:
+      # client_key:
+      # ssl_no_validate: True
+      # http_auth:
+      # timeout: 30
+      # master_only: False
+    # logging:
+    #   loglevel: INFO
+    #   logfile:
+    #   logformat: default
+    #   blacklist: ['elasticsearch', 'urllib3']
+  
+
+---
+# Source: lexlogger/templates/es-configmap.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: RELEASE-NAME-lexlogger-elasticsearch
+  labels:
+    app: RELEASE-NAME-lexlogger
+    chart: "lexlogger-1.0.0"
+    component: es-master
+    release: RELEASE-NAME
+    heritage: Tiller
+data:
+  elasticsearch.yml: |-
+    cluster.name: es-lexlogger
+    node.data: ${NODE_DATA:true}
+    node.master: ${NODE_MASTER:true}
+    node.ingest: ${NODE_INGEST:true}
+    node.name: ${HOSTNAME}
+
+    network.host: 0.0.0.0
+
+    # see https://github.com/kubernetes/kubernetes/issues/3595
+    bootstrap.memory_lock: ${BOOTSTRAP_MEMORY_LOCK:false}
+
+    discovery:
+      zen:
+        ping.unicast.hosts: ${DISCOVERY_SERVICE:}
+        minimum_master_nodes: ${MINIMUM_MASTER_NODES:2}
+
+    # see https://github.com/elastic/elasticsearch-definitive-guide/pull/679
+    processors: ${PROCESSORS:}
+
+    # avoid split-brain w/ a minimum consensus of two masters plus a data node
+    gateway.expected_master_nodes: ${EXPECTED_MASTER_NODES:2}
+    gateway.expected_data_nodes: ${EXPECTED_DATA_NODES:1}
+    gateway.recover_after_time: ${RECOVER_AFTER_TIME:5m}
+    gateway.recover_after_master_nodes: ${RECOVER_AFTER_MASTER_NODES:2}
+    gateway.recover_after_data_nodes: ${RECOVER_AFTER_DATA_NODES:1}
+  log4j2.properties: |-
+    status = error
+    appender.console.type = Console
+    appender.console.name = console
+    appender.console.layout.type = PatternLayout
+    appender.console.layout.pattern = [%d{ISO8601}][%-5p][%-25c{1.}] %marker%m%n
+    rootLogger.level = warn
+    rootLogger.appenderRef.console.ref = console
+    logger.searchguard.name = com.floragunn
+    logger.searchguard.level = info
+  pre-stop-hook.sh: |-
+    #!/bin/bash
+    exec &> >(tee -a "/var/log/elasticsearch-hooks.log")
+    NODE_NAME=${HOSTNAME}
+    echo "Prepare to migrate data of the node ${NODE_NAME}"
+    echo "Move all data from node ${NODE_NAME}"
+    curl -s -XPUT -H 'Content-Type: application/json' 'RELEASE-NAME-lexlogger-es-client:9200/_cluster/settings' -d "{
+      \"transient\" :{
+          \"cluster.routing.allocation.exclude._name\" : \"${NODE_NAME}\"
+      }
+    }"
+    echo ""
+    while true ; do
+      echo -e "Wait for node ${NODE_NAME} to become empty"
+      SHARDS_ALLOCATION=$(curl -s -XGET 'http://RELEASE-NAME-lexlogger-es-client:9200/_cat/shards')
+      if ! echo "${SHARDS_ALLOCATION}" | grep -E "${NODE_NAME}"; then
+        break
+      fi
+      sleep 1
+    done
+    echo "Node ${NODE_NAME} is ready to shutdown"
+  post-start-hook.sh: |-
+    #!/bin/bash
+    exec &> >(tee -a "/var/log/elasticsearch-hooks.log")
+    NODE_NAME=${HOSTNAME}
+    CLUSTER_SETTINGS=$(curl -s -XGET "http://RELEASE-NAME-lexlogger-es-client:9200/_cluster/settings")
+    if echo "${CLUSTER_SETTINGS}" | grep -E "${NODE_NAME}"; then
+      echo "Activate node ${NODE_NAME}"
+      curl -s -XPUT -H 'Content-Type: application/json' "http://RELEASE-NAME-lexlogger-es-client:9200/_cluster/settings" -d "{
+        \"transient\" :{
+            \"cluster.routing.allocation.exclude._name\" : null
+        }
+      }"
+    fi
+    echo "Node ${NODE_NAME} is ready to be used"
+  exporter.cfg: |-
+    #https://github.com/braedon/prometheus-es-exporter/blob/master/exporter.cfg
+    [DEFAULT]
+    QueryIntervalSecs = 15
+    QueryTimeoutSecs = 10
+    QueryIndices = _all
+
+    [query_all]
+    QueryJson = {
+            "size": 0,
+            "query": {
+                "match_all": {}
+            }
+        }
+
+    [query_terms]
+    QueryIntervalSecs = 20
+    QueryTimeoutSecs = 15
+    QueryIndices = <logstash-{now/d}>
+    QueryJson = {
+            "size": 0,
+            "query": {
+                "match_all": {}
+            },
+            "aggs": {
+                "group1_terms": {
+                    "terms": {"field": "group1"},
+                    "aggs": {
+                        "val_sum": {
+                            "sum": {"field": "val"}
+                        }
+                    }
+                }
+            }
+        }
+
+
+---
+# Source: lexlogger/templates/fluentbit-configmap.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: RELEASE-NAME-lexlogger-fluentbit-config
+  labels:
+    app: RELEASE-NAME-lexlogger
+    chart: lexlogger-1.0.0
+    component: fluentbit
+    heritage: Tiller
+    release: RELEASE-NAME
+data:
+  fluent-bit.conf: |-
+    [SERVICE]
+        Flush        1
+        Daemon       Off
+        Log_Level    info
+        Parsers_File parsers.conf
+        Parsers_File parsers_custom.conf
+
+    [INPUT]
+        Name             tail
+        Path             /var/log/containers/*.log
+        Parser           docker
+        Tag              kube.*
+        Refresh_Interval 5
+        Mem_Buf_Limit    5MB
+        Skip_Long_Lines  On
+
+    [FILTER]
+        Name                kubernetes
+        Match               kube.*
+        Kube_URL            https://kubernetes.default.svc:443
+        Kube_CA_File        /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+        Kube_Token_File     /var/run/secrets/kubernetes.io/serviceaccount/token
+    [OUTPUT]
+        Name          forward
+        Match         *
+        Host          RELEASE-NAME-lexlogger-fluentd
+        Port          24224
+        Retry_Limit False
+
+  parsers.conf: |-
+    [PARSER]
+        Name        level
+        Format      regex
+        Regex       \[?(?<level>debug|info|warn|error|trace)\]?
+
+---
+# Source: lexlogger/templates/fluentd-configmap.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: RELEASE-NAME-lexlogger-fluentd-config
+  labels:
+    app: lexlogger
+    chart: lexlogger-1.0.0
+    component: fluentd
+    release: RELEASE-NAME
+    heritage: Tiller
+data:
+  filter.conf: |-
+    <filter **>
+      @type             dedot
+      de_dot            true
+      de_dot_separator  _
+      de_dot_nested     true
+    </filter>
+    
+  forward-input.conf: |-
+    <source>
+      @type forward
+      port 24224
+      bind 0.0.0.0
+    </source>
+    
+  general.conf: |-
+    # Prevent fluentd from handling records containing its own logs. Otherwise
+    # it can lead to an infinite loop, when error in sending one message generates
+    # another message which also fails to be sent and so on.
+    <match **fluentd**>
+      @type null
+    </match>
+    # Used for health checking
+    <source>
+      @type http
+      port 9880
+      bind 0.0.0.0
+    </source>
+    # Emits internal metrics to every minute, and also exposes them on port
+    # 24220. Useful for determining if an output plugin is retryring/erroring,
+    # or determining the buffer queue length.
+    <source>
+      @type monitor_agent
+      bind 0.0.0.0
+      port 24220
+      tag fluentd.monitor.metrics
+    </source>
+    
+  metrics.conf: |-
+    <filter **>
+      @type prometheus
+      @log_level warn
+      <metric>
+        name fluentd_input_status_num_records_total
+        type counter
+        desc The total number of incoming records
+        <labels>
+          tag ${tag}
+          hostname ${hostname}
+        </labels>
+      </metric>
+    </filter>
+    <source>
+      @type prometheus
+      bind 0.0.0.0
+      port 24231
+      metrics_path /metrics
+    </source>
+    <source>
+      @type prometheus_output_monitor
+      interval 10
+      <labels>
+        hostname ${hostname}
+      </labels>
+    </source>
+    
+  output.conf: |-
+    <match **>
+      @type copy
+      <store>
+        @id elasticsearch
+        @type elasticsearch
+        @log_level warn
+        include_tag_key true
+        # Replace with the host/port to your Elasticsearch cluster.
+        host "#{ENV['OUTPUT_HOST']}"
+        port "#{ENV['OUTPUT_PORT']}"
+        logstash_format true
+        <parse>
+          @type regexp
+          expression /\[?(?<level>debug|info|warn|error|trace)\]?/i
+        </parse>
+        <buffer>
+          @type memory
+          flush_mode interval
+          retry_type exponential_backoff
+          flush_thread_count 8
+          flush_interval 5s
+          retry_forever
+          retry_max_interval 30
+          chunk_limit_size "#{ENV['OUTPUT_BUFFER_CHUNK_LIMIT']}"
+          queue_limit_length "#{ENV['OUTPUT_BUFFER_QUEUE_LIMIT']}"
+          overflow_action drop_oldest_chunk
+        </buffer>
+      </store>
+      <store>
+        @type prometheus
+        <metric>
+          name fluentd_output_status_num_records_total
+          type counter
+          desc The total number of outgoing records
+          <labels>
+            tag ${tag}
+            hostname ${hostname}
+          </labels>
+        </metric>
+      </store>
+    </match>
+    
+  system.conf: |-
+    <system>
+      root_dir /tmp/fluentd-buffers/
+      log_level warn
+    </system>
+---
+# Source: lexlogger/templates/kibana-configmap.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: RELEASE-NAME-lexlogger-kibana
+  labels:
+    app: lexlogger
+    chart: "lexlogger-1.0.0"
+    component: kibana
+    release: RELEASE-NAME
+    heritage: Tiller
+data:
+  kibana.yml: |
+    elasticsearch.url: http://elasticsearch:9200
+    logging.quiet: true
+    server.host: "0"
+    server.name: kibana
+    
+---
+# Source: lexlogger/templates/fluentbit-serviceaccount.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  labels:
+    app: lexlogger
+    chart: lexlogger-1.0.0
+    component: fluentbit
+    heritage: Tiller
+    release: RELEASE-NAME
+  name: RELEASE-NAME-lexlogger-fluentbit
+---
+# Source: lexlogger/templates/kibana-serviceaccount.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  labels:
+    app: lexlogger
+    chart: lexlogger-1.0.0
+    component: kibana
+    heritage: Tiller
+    release: RELEASE-NAME
+  name: RELEASE-NAME-lexlogger-kibana
+---
+# Source: lexlogger/templates/fluentbit-clusterrole.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app: lexlogger
+    chart: lexlogger-1.0.0
+    component: fluentbit
+    heritage: Tiller
+    release: RELEASE-NAME
+  name: RELEASE-NAME-lexlogger-fluentbit
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - pods
+    verbs:
+      - get
+---
+# Source: lexlogger/templates/fluentbit-clusterrolebinding.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  labels:
+    app: lexlogger
+    chart: lexlogger-1.0.0
+    component: fluentbit
+    heritage: Tiller
+    release: RELEASE-NAME
+  name: RELEASE-NAME-lexlogger-fluentbit
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: RELEASE-NAME-lexlogger-fluentbit
+subjects:
+  - kind: ServiceAccount
+    name: RELEASE-NAME-lexlogger-fluentbit
+    namespace: streaming-services
+---
+# Source: lexlogger/templates/es-client-service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: lexlogger
+    chart: lexlogger-1.0.0
+    component: es-client
+    heritage: Tiller
+    release: RELEASE-NAME
+  name: RELEASE-NAME-lexlogger-es-client
+  annotations:
+    prometheus.io/port: "9206"
+    prometheus.io/scrape: "true"
+spec:
+  ports:
+    - name: http
+      port: 9200
+      targetPort: http
+  selector:
+    app: lexlogger
+    component: es-client
+    release: RELEASE-NAME
+  type: ClusterIP
+  
+
+---
+# Source: lexlogger/templates/es-master-service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: lexlogger
+    chart: lexlogger-1.0.0
+    component: es-master
+    heritage: Tiller
+    release: RELEASE-NAME
+  name: RELEASE-NAME-lexlogger-discovery
+spec:
+  clusterIP: None
+  ports:
+    - port: 9300
+      targetPort: transport
+  selector:
+    app: lexlogger
+    component: es-master
+    release: RELEASE-NAME
+---
+# Source: lexlogger/templates/fluentd-service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: RELEASE-NAME-lexlogger-fluentd
+  labels:
+    app: lexlogger
+    chart: lexlogger-1.0.0
+    component: fluentd
+    release: RELEASE-NAME
+    heritage: Tiller
+  annotations:
+    prometheus.io/port: "24231"
+    prometheus.io/scrape: "true"
+spec:
+  type: ClusterIP
+  ports:
+    - name: monitor-agent
+      port: 24220
+      targetPort: 24220
+      protocol: TCP
+    - name: fbit-forward
+      port: 24224
+      targetPort: 24224
+      protocol: TCP
+  selector:
+    component: fluentd
+    release: RELEASE-NAME
+
+---
+# Source: lexlogger/templates/kibana-service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: lexlogger
+    chart: lexlogger-1.0.0
+    component: kibana
+    release: RELEASE-NAME
+    heritage: Tiller
+  name: RELEASE-NAME-lexlogger-kibana
+  annotations:
+spec:
+  type: NodePort
+  ports:
+    - port: 443
+      targetPort: 5601
+      protocol: TCP
+
+  selector:
+    app: lexlogger
+    component: kibana
+    release: RELEASE-NAME
+---
+# Source: lexlogger/templates/fluentbit-daemonset.yaml
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: RELEASE-NAME-lexlogger-fluentbit
+  labels:
+    app: RELEASE-NAME-lexlogger
+    chart: lexlogger-1.0.0
+    component: fluentbit
+    heritage: Tiller
+    release: RELEASE-NAME
+spec:
+  selector:
+    matchLabels:
+      app: lexlogger
+      component: fluentbit
+      release: RELEASE-NAME
+  updateStrategy:
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: lexlogger
+        component: fluentbit
+        release: RELEASE-NAME
+      annotations:
+        checksum/config: 391453172a018512780198521f77531435c6fb8d4a4cb2a8ccc1f86ef3dd8460
+    spec:
+      serviceAccountName: RELEASE-NAME-lexlogger-fluentbit
+      containers:
+      - name: fluentbit
+        image: "fluent/fluent-bit:0.14.4"
+        imagePullPolicy: "Always"
+        env:
+          []
+          
+        resources:
+          limits:
+            cpu: 100m
+            memory: 100Mi
+          requests:
+            cpu: 10m
+            memory: 100Mi
+          
+        volumeMounts:
+        - name: varlog
+          mountPath: /var/log
+        - name: varlibdockercontainers
+          mountPath: /var/lib/docker/containers
+          readOnly: true
+        - name: config
+          mountPath: /fluent-bit/etc/fluent-bit.conf
+          subPath: fluent-bit.conf
+        - name: config
+          mountPath: /fluent-bit/etc/parsers_custom.conf
+          subPath: parsers.conf
+
+      terminationGracePeriodSeconds: 10
+      volumes:
+      - name: varlog
+        hostPath:
+          path: /var/log
+      - name: varlibdockercontainers
+        hostPath:
+          path: /var/lib/docker/containers
+      - name: config
+        configMap:
+          name: RELEASE-NAME-lexlogger-fluentbit-config
+
+---
+# Source: lexlogger/templates/es-client-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: lexlogger
+    chart: lexlogger-1.0.0
+    component: es-client
+    heritage: Tiller
+    release: RELEASE-NAME
+  name: RELEASE-NAME-lexlogger-es-client
+spec:
+  selector:
+    matchLabels:
+      app: lexlogger
+      component: es-client
+      release: RELEASE-NAME
+  replicas: 2
+  template:
+    metadata:
+      labels:
+        app: lexlogger
+        component: es-client
+        release: RELEASE-NAME
+      annotations:
+        checksum/configmap: 3280953d78ffd2eed481aa54d612b64b72ceaf67516d1801a9c6df850008550c
+    spec:
+      securityContext:
+        fsGroup: 1000
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 1
+            podAffinityTerm:
+              topologyKey: kubernetes.io/hostname
+              labelSelector:
+                matchLabels:
+                  app: lexlogger
+                  release: RELEASE-NAME
+                  component: es-client
+      initContainers:
+      # see https://www.elastic.co/guide/en/elasticsearch/reference/current/vm-max-map-count.html
+      # and https://www.elastic.co/guide/en/elasticsearch/reference/current/setup-configuration-memory.html#mlockall
+      - name: "sysctl"
+        image: "busybox:latest"
+        imagePullPolicy: "Always"
+        command: ["sysctl", "-w", "vm.max_map_count=262144"]
+        securityContext:
+          privileged: true
+      containers:
+      - name: prometheus-es-exporter
+        image: braedon/prometheus-es-exporter:0.5.1
+        volumeMounts:
+        - mountPath: /usr/src/app/exporter.cfg
+          name: config
+          subPath: exporter.cfg
+        command: ["prometheus-es-exporter", "-p", "9206", "-e", "RELEASE-NAME-lexlogger-es-client:9200", "-c", "/usr/src/app/exporter.cfg"]
+        ports:
+        - containerPort: 9206
+          name: es-metrics
+      - name: elasticsearch
+        env:
+        - name: NODE_DATA
+          value: "false"
+        - name: NODE_MASTER
+          value: "false"
+        - name: DISCOVERY_SERVICE
+          value: RELEASE-NAME-lexlogger-discovery
+        - name: PROCESSORS
+          valueFrom:
+            resourceFieldRef:
+              resource: limits.cpu
+        - name: ES_JAVA_OPTS
+          value: "-Djava.net.preferIPv4Stack=true -Xms512m -Xmx512m "
+        - name: MINIMUM_MASTER_NODES
+          value: "2"
+        resources:
+            limits:
+              cpu: 500m
+              memory: 1536Mi
+            requests:
+              cpu: 250m
+              memory: 1536Mi
+            
+        readinessProbe:
+          httpGet:
+            path: /_cluster/health
+            port: 9200
+          initialDelaySeconds: 5
+        livenessProbe:
+          httpGet:
+            path: /_cluster/health?local=true
+            port: 9200
+          initialDelaySeconds: 90
+        image: "docker.elastic.co/elasticsearch/elasticsearch-oss:6.4.2"
+        imagePullPolicy: "IfNotPresent"
+        ports:
+        - containerPort: 9200
+          name: http
+        - containerPort: 9300
+          name: transport
+        volumeMounts:
+        - mountPath: /usr/share/elasticsearch/config/elasticsearch.yml
+          name: config
+          subPath: elasticsearch.yml
+        - mountPath: /usr/share/elasticsearch/config/log4j2.properties
+          name: config
+          subPath: log4j2.properties
+      volumes:
+      - name: config
+        configMap:
+          name: RELEASE-NAME-lexlogger-elasticsearch
+
+---
+# Source: lexlogger/templates/fluentd-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: RELEASE-NAME-lexlogger-fluentd
+  labels:
+    app: lexlogger
+    chart: lexlogger-1.0.0
+    component: fluentd
+    release: RELEASE-NAME
+    heritage: Tiller
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: lexlogger
+      component: fluentd
+      release: RELEASE-NAME
+  template:
+    metadata:
+      labels:
+        app: lexlogger
+        component: fluentd
+        release: RELEASE-NAME
+      annotations:
+        checksum/configmap: 1ffa8bea8fa1e9f045a0ab9b2cdc08034d9120124f630490b25f79bca9e318dc
+    spec:
+      containers:
+      - name: lexlogger-fluentd
+        image: "gcr.io/google-containers/fluentd-elasticsearch:v2.3.1"
+        imagePullPolicy: IfNotPresent
+        env:
+          - name: OUTPUT_HOST
+            value: RELEASE-NAME-lexlogger-es-client
+          - name: OUTPUT_PORT
+            value: "9200"
+          - name: OUTPUT_BUFFER_CHUNK_LIMIT
+            value: "2M"
+          - name: OUTPUT_BUFFER_QUEUE_LIMIT
+            value: "8"
+        command:
+        - "bash"
+        - "-c"
+        - "fluent-gem install fluent-plugin-dedot_filter -v 1.0.0 && /run.sh"
+        resources:
+          limits:
+            cpu: 500m
+            memory: 200Mi
+          requests:
+            cpu: 250m
+            memory: 200Mi
+          
+        ports:
+          - name: monitor-agent
+            containerPort: 24220
+            protocol: TCP
+          - name: fbit-forward
+            containerPort: 24224
+            protocol: TCP
+          - name: metrics
+            containerPort: 24231
+            protocol: TCP
+          - name: http-input
+            containerPort: 9880
+            protocol: TCP
+        livenessProbe:
+          httpGet:
+            # Use percent encoding for query param.
+            # The value is {"log": "health check"}.
+            # the endpoint itself results in a new fluentd
+            # tag 'fluentd.pod-healthcheck'
+            path: /fluentd.pod.healthcheck?json=%7B%22log%22%3A+%22health+check%22%7D
+            port: 9880
+          initialDelaySeconds: 5
+          timeoutSeconds: 1
+        volumeMounts:
+        - name: config-volume-RELEASE-NAME-lexlogger-fluentd
+          mountPath: /etc/fluent/config.d
+        - name: buffer
+          mountPath: "/var/log/fluentd-buffers"
+      volumes:
+        - name: config-volume-RELEASE-NAME-lexlogger-fluentd
+          configMap:
+            name: RELEASE-NAME-lexlogger-fluentd-config
+        - name: buffer
+          emptyDir: {}
+
+---
+# Source: lexlogger/templates/kibana-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: lexlogger
+    chart: "lexlogger-1.0.0"
+    component: kibana
+    heritage: Tiller
+    release: RELEASE-NAME
+  name: RELEASE-NAME-lexlogger-kibana
+spec:
+  selector:
+    matchLabels:
+      app: lexlogger
+      component: "kibana"
+      release: "RELEASE-NAME"
+  replicas: 1
+  revisionHistoryLimit: 3
+  template:
+    metadata:
+      labels:
+        app: lexlogger
+        component: "kibana"
+        release: "RELEASE-NAME"
+    spec:
+      serviceAccountName: RELEASE-NAME-lexlogger-kibana
+      containers:
+      - name: lexlogger-kibana
+        image: "docker.elastic.co/kibana/kibana-oss:6.4.2"
+        imagePullPolicy: IfNotPresent
+        env:
+        - name: "ELASTICSEARCH_URL"
+          value: http://RELEASE-NAME-lexlogger-es-client:9200
+        ports:
+        - containerPort: 5601
+          name: kibana-ui
+          protocol: TCP
+        resources:
+          limits:
+            cpu: 100m
+            memory: 300Mi
+          requests:
+            cpu: 100m
+            memory: 300Mi
+          
+        volumeMounts:
+        - name: RELEASE-NAME-lexlogger-kibana
+          mountPath: "/usr/share/kibana/config/kibana.yml"
+          subPath: kibana.yml
+      tolerations:
+        []
+        
+      volumes:
+        - name: RELEASE-NAME-lexlogger-kibana
+          configMap:
+            name: RELEASE-NAME-lexlogger-kibana
+---
+# Source: lexlogger/templates/es-data-statefulset.yaml
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  labels:
+    app: lexlogger
+    chart: lexlogger-1.0.0
+    component: es-data
+    heritage: Tiller
+    release: RELEASE-NAME
+  name: RELEASE-NAME-lexlogger-es-data
+spec:
+  selector:
+    matchLabels:
+      app: lexlogger
+      component: es-data
+      release: RELEASE-NAME
+  serviceName: RELEASE-NAME-lexlogger-es-data
+  replicas: 2
+  template:
+    metadata:
+      labels:
+        app: lexlogger
+        component: es-data
+        release: RELEASE-NAME
+      annotations:
+        checksum/configmap: 3280953d78ffd2eed481aa54d612b64b72ceaf67516d1801a9c6df850008550c
+    spec:
+      securityContext:
+        fsGroup: 1000
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 1
+            podAffinityTerm:
+              topologyKey: kubernetes.io/hostname
+              labelSelector:
+                matchLabels:
+                  app: lexlogger
+                  release: RELEASE-NAME
+                  component: es-data
+      initContainers:
+      # see https://www.elastic.co/guide/en/elasticsearch/reference/current/vm-max-map-count.html
+      # and https://www.elastic.co/guide/en/elasticsearch/reference/current/setup-configuration-memory.html#mlockall
+      - name: "sysctl"
+        image: "busybox:latest"
+        imagePullPolicy: "Always"
+        command: ["sysctl", "-w", "vm.max_map_count=262144"]
+        securityContext:
+          privileged: true
+      - name: "chown"
+        image: "docker.elastic.co/elasticsearch/elasticsearch-oss:6.4.2"
+        imagePullPolicy: "IfNotPresent"
+        command:
+        - /bin/bash
+        - -c
+        - chown -R elasticsearch:elasticsearch /usr/share/elasticsearch/data &&
+          chown -R elasticsearch:elasticsearch /usr/share/elasticsearch/logs
+        securityContext:
+          runAsUser: 0
+        volumeMounts:
+        - mountPath: /usr/share/elasticsearch/data
+          name: data
+      containers:
+      - name: elasticsearch
+        env:
+        - name: DISCOVERY_SERVICE
+          value: RELEASE-NAME-lexlogger-discovery
+        - name: NODE_MASTER
+          value: "false"
+        - name: PROCESSORS
+          valueFrom:
+            resourceFieldRef:
+              resource: limits.cpu
+        - name: ES_JAVA_OPTS
+          value: "-Djava.net.preferIPv4Stack=true -Xms3072m -Xmx3072m -XX:NewSize=512m "
+        - name: MINIMUM_MASTER_NODES
+          value: "2"
+        image: "docker.elastic.co/elasticsearch/elasticsearch-oss:6.4.2"
+        imagePullPolicy: "IfNotPresent"
+        ports:
+        - containerPort: 9300
+          name: transport
+
+        resources:
+            limits:
+              cpu: 1000m
+              memory: 4096Mi
+            requests:
+              cpu: 500m
+              memory: 4096Mi
+            
+        readinessProbe:
+          httpGet:
+            path: /_cluster/health?local=true
+            port: 9200
+          initialDelaySeconds: 5
+        volumeMounts:
+        - mountPath: /usr/share/elasticsearch/config/log4j2.properties
+          name: config
+          subPath: log4j2.properties
+        - mountPath: /usr/share/elasticsearch/data
+          name: data
+        - mountPath: /usr/share/elasticsearch/config/elasticsearch.yml
+          name: config
+          subPath: elasticsearch.yml
+        - name: config
+          mountPath: /pre-stop-hook.sh
+          subPath: pre-stop-hook.sh
+        - name: config
+          mountPath: /post-start-hook.sh
+          subPath: post-start-hook.sh
+        lifecycle:
+          preStop:
+            exec:
+              command: ["/bin/bash","/pre-stop-hook.sh"]
+          postStart:
+            exec:
+              command: ["/bin/bash","/post-start-hook.sh"]
+      terminationGracePeriodSeconds: 3600
+      volumes:
+      - name: config
+        configMap:
+          name: RELEASE-NAME-lexlogger-elasticsearch
+  updateStrategy:
+    type: RollingUpdate
+  volumeClaimTemplates:
+  - metadata:
+      name: data
+    spec:
+      accessModes:
+        - "ReadWriteOnce"
+      resources:
+        requests:
+          storage: "30Gi"
+
+---
+# Source: lexlogger/templates/es-master-statefulset.yaml
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  labels:
+    app: lexlogger
+    chart: lexlogger-1.0.0
+    component: es-master
+    heritage: Tiller
+    release: RELEASE-NAME
+  name: RELEASE-NAME-lexlogger-es-master
+spec:
+  selector:
+    matchLabels:
+      app: lexlogger
+      component: es-master
+      release: RELEASE-NAME
+  serviceName: RELEASE-NAME-lexlogger-es-master
+  replicas: 2
+  template:
+    metadata:
+      labels:
+        app: lexlogger
+        component: es-master
+        release: RELEASE-NAME
+      annotations:
+        checksum/configmap: 3280953d78ffd2eed481aa54d612b64b72ceaf67516d1801a9c6df850008550c
+    spec:
+      securityContext:
+        fsGroup: 1000
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 1
+            podAffinityTerm:
+              topologyKey: kubernetes.io/hostname
+              labelSelector:
+                matchLabels:
+                  app: lexlogger
+                  release: "RELEASE-NAME"
+                  component: es-master
+      initContainers:
+      # see https://www.elastic.co/guide/en/elasticsearch/reference/current/vm-max-map-count.html
+      # and https://www.elastic.co/guide/en/elasticsearch/reference/current/setup-configuration-memory.html#mlockall
+      - name: "sysctl"
+        image: "busybox:latest"
+        imagePullPolicy: "Always"
+        command: ["sysctl", "-w", "vm.max_map_count=262144"]
+        securityContext:
+          privileged: true
+      - name: "chown"
+        image: "docker.elastic.co/elasticsearch/elasticsearch-oss:6.4.2"
+        imagePullPolicy: "IfNotPresent"
+        command:
+        - /bin/bash
+        - -c
+        - chown -R elasticsearch:elasticsearch /usr/share/elasticsearch/data &&
+          chown -R elasticsearch:elasticsearch /usr/share/elasticsearch/logs
+        securityContext:
+          runAsUser: 0
+        volumeMounts:
+        - mountPath: /usr/share/elasticsearch/data
+          name: data
+      containers:
+      - name: elasticsearch
+        env:
+        - name: NODE_DATA
+          value: "false"
+        - name: DISCOVERY_SERVICE
+          value: RELEASE-NAME-lexlogger-discovery
+        - name: PROCESSORS
+          valueFrom:
+            resourceFieldRef:
+              resource: limits.cpu
+        - name: ES_JAVA_OPTS
+          value: "-Djava.net.preferIPv4Stack=true -Xms512m -Xmx512m "
+        - name: MINIMUM_MASTER_NODES
+          value: "2"
+        resources:
+            limits:
+              cpu: 250m
+              memory: 1536Mi
+            requests:
+              cpu: 100m
+              memory: 1536Mi
+            
+        readinessProbe:
+          httpGet:
+            path: /_cluster/health?local=true
+            port: 9200
+          initialDelaySeconds: 5
+        image: "docker.elastic.co/elasticsearch/elasticsearch-oss:6.4.2"
+        imagePullPolicy: "IfNotPresent"
+        ports:
+        - containerPort: 9300
+          name: transport
+
+        volumeMounts:
+        - mountPath: /usr/share/elasticsearch/config/log4j2.properties
+          name: config
+          subPath: log4j2.properties
+        - mountPath: /usr/share/elasticsearch/data
+          name: data
+        - mountPath: /usr/share/elasticsearch/config/elasticsearch.yml
+          name: config
+          subPath: elasticsearch.yml
+      volumes:
+      - name: config
+        configMap:
+          name: RELEASE-NAME-lexlogger-elasticsearch
+  updateStrategy:
+    type: RollingUpdate
+  volumeClaimTemplates:
+  - metadata:
+      name: data
+    spec:
+      accessModes:
+        - "ReadWriteOnce"
+      resources:
+        requests:
+          storage: "4Gi"
+  
+
+---
+# Source: lexlogger/charts/elasticsearch-curator/templates/cronjob.yaml
+apiVersion: batch/v1beta1
+kind: CronJob
+metadata:
+  name: RELEASE-NAME-elasticsearch-curator
+  labels:
+    app: elasticsearch-curator
+    chart: elasticsearch-curator-1.4.0
+    release: RELEASE-NAME
+    heritage: Tiller
+spec:
+  schedule: "0 1 * * *"
+  jobTemplate:
+    metadata:
+      labels:
+        app: elasticsearch-curator
+        release: RELEASE-NAME
+    spec:
+      template:
+        metadata:
+          labels:
+            app: elasticsearch-curator
+            release: RELEASE-NAME
+        spec:
+          volumes:
+            - name: config-volume
+              configMap:
+                name: RELEASE-NAME-elasticsearch-curator-config
+          restartPolicy: Never
+          containers:
+            - name: elasticsearch-curator
+              image: "quay.io/pires/docker-elasticsearch-curator:5.5.4"
+              imagePullPolicy: IfNotPresent
+              volumeMounts:
+                - name: config-volume
+                  mountPath: /etc/es-curator
+
+              command:
+                - curator
+                
+              args: [ "--config", "/etc/es-curator/config.yml", "/etc/es-curator/action_file.yml" ]
+              env:
+              resources:
+                {}
+                
+          securityContext:
+            runAsUser: 16
+            
+
+---
+# Source: lexlogger/templates/kibana-ingress.yaml
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  annotations:
+    alb.ingress.kubernetes.io/scheme: internal
+    alb.ingress.kubernetes.io/tags: scos.delete.on.teardown=true
+    kubernetes.io/ingress.class: alb
+    alb.ingress.kubernetes.io/actions.redirect: '{"Type": "redirect", "RedirectConfig":{"Protocol":
+      "HTTPS", "Port": "443", "StatusCode": "HTTP_301"}}'
+    alb.ingress.kubernetes.io/healthcheck-path: /status
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS": 443}]'
+  labels:
+    app: lexlogger
+    chart: lexlogger-1.0.0
+    component: kibana
+    heritage: Tiller
+    release: RELEASE-NAME
+  name: RELEASE-NAME-lexlogger-kibana
+spec:
+  backend:
+    serviceName: RELEASE-NAME-lexlogger-kibana
+    servicePort: 443
+  rules:
+---
+# Source: lexlogger/charts/elasticsearch-curator/templates/hooks/job.install.yaml
+
+
+
+
+---
+# Source: lexlogger/templates/es-client-pdb.yaml
+
+---
+# Source: lexlogger/templates/es-data-pdb.yaml
+
+---
+# Source: lexlogger/templates/es-master-pdb.yaml
+
+---
+# Source: lexlogger/templates/fluentbit-service.yaml
+
+---
+# Source: lexlogger/templates/fluentd-ingress.yaml
+
+---
+# Source: lexlogger/templates/fluentd-pvc.yaml
+
+---
+# Source: lexlogger/templates/kibana-dashboard-configmap.yaml
+
