@@ -160,11 +160,14 @@ fluentbit:
   trackOffsets: false
 
   parsers:
-    enabled: false
+    enabled: true
     ## List the respective parsers in key: value format per entry
     ## Regex required fields are name and regex. JSON required field
     ## is name.
-    regex: []
+    regex: [
+      name: level
+      regex: "\[?(?<level>debug|info|warn|error|trace)\]?"
+    ]
     json: []
 
   env: []
