@@ -47,7 +47,7 @@ elasticsearch-curator:
             direction: older
             timestring: '%Y.%m.%d'
             unit: days
-            unit_count: 30
+            unit_count: 20
             field:
             stats_result:
             epoch:
