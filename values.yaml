@@ -4,6 +4,7 @@ global:
       kubernetes.io/ingress.class: alb
       alb.ingress.kubernetes.io/tags: scos.delete.on.teardown=true
       alb.ingress.kubernetes.io/scheme: internal
+      alb.ingress.kubernetes.io/ssl-policy: "ELBSecurityPolicy-TLS-1-2-2017-01"
 
 rbac:
   create: true
