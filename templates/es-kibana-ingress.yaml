@@ -1,6 +1,4 @@
 {{- if .Values.kibana.ingress.enabled -}}
-{{- $serviceName := include "lexlogger.kibana.fullname" . -}}
-{{- $servicePort := .Values.kibana.service.externalPort -}}
 apiVersion: extensions/v1beta1
 kind: Ingress
 metadata:
@@ -11,17 +9,11 @@ metadata:
 {{- if .Values.kibana.ingress.annotations }}
 {{ toYaml .Values.kibana.ingress.annotations | trim | indent 4 }}
 {{- end }}
-  labels:
-    app: {{ template "lexlogger.name" . }}
-    chart: {{ .Chart.Name }}-{{ .Chart.Version }}
-    component: {{ .Values.kibana.name }}
-    heritage: {{ .Release.Service }}
-    release: {{ .Release.Name }}
-  name: {{ template "lexlogger.kibana.fullname" . }}
+  name: "{{ .Release.Name }}-kb"
 spec:
   backend:
-    serviceName: {{ $serviceName }}
-    servicePort: {{ $servicePort }}
+    serviceName: "{{ .Release.Name }}-kb-http"
+    servicePort: {{ .Values.kibana.service.internalPort }}
   rules:
   {{- range .Values.kibana.ingress.hosts }}
     {{- $url := splitList "/" . }}

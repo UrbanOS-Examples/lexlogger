@@ -1,0 +1,44 @@
+apiVersion: elasticsearch.k8s.elastic.co/v1
+kind: Elasticsearch
+metadata:
+  name: {{ .Release.Name }}
+spec:
+  version: 7.9.3
+  nodeSets:
+  - name: masters
+    count: {{ .Values.elasticsearch.master.replicas }}
+    volumeClaimTemplates:
+    - metadata:
+        name: {{ .Values.elasticsearch.master.persistence.name }}
+      spec:
+        accessModes:
+        - {{ .Values.elasticsearch.master.persistence.accessMode | quote }}
+        resources:
+          requests:
+            storage: "{{ .Values.elasticsearch.master.persistence.size }}"
+        storageClassName: "{{ .Values.elasticsearch.master.persistence.storageClass }}"
+    config:
+      node.master: true
+      xpack.ml.enabled: true
+      node.store.allow_mmap: false
+      node.remote_cluster_client: false
+  - name: data
+    count: {{ .Values.elasticsearch.data.replicas }}
+    volumeClaimTemplates:
+    - metadata:
+        name: {{ .Values.elasticsearch.data.persistence.name }}
+      spec:
+        accessModes:
+        - {{ .Values.elasticsearch.data.persistence.accessMode | quote }}
+        resources:
+          requests:
+            storage: "{{ .Values.elasticsearch.data.persistence.size }}"
+        storageClassName: "{{ .Values.elasticsearch.data.persistence.storageClass }}"
+    config:
+      node.master: false
+      node.data: true
+      node.ingest: true
+      node.ml: true
+      node.transform: true
+      node.store.allow_mmap: false
+      node.remote_cluster_client: false

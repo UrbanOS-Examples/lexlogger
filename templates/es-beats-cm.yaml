@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: "{{ .Release.Name }}-beats"
+data:
+  ilm-policy.json: |-
+    {
+      "policy": {
+        "phases": {
+          "delete": {
+            "min_age": "15d",
+            "actions": {
+              "delete": {} 
+            }
+          }
+        }
+      }
+    }

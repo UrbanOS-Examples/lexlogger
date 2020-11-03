@@ -75,35 +75,18 @@ Create a fully qualified elasticsearch client name.
 {{- end -}}
 
 {{/*
-Create a fully qualified fluentd name.
-We truncate at 63 chars because some Kubernetes name fields are limited to this (by the DNS naming spec).
-*/}}
-{{- define "lexlogger.fluentd.fullname" -}}
-{{- if .Values.fluentd.fullnameOverride -}}
-{{- .Values.fluentd.fullnameOverride | trunc 63 | trimSuffix "-" -}}
-{{- else -}}
-{{- $name := default .Chart.Name .Values.nameOverride -}}
-{{- if contains $name .Release.Name -}}
-{{- printf "%s-%s" .Release.Name .Values.fluentd.name | trunc 63 | trimSuffix "-" -}}
-{{- else -}}
-{{- printf "%s-%s-%s" .Release.Name $name .Values.fluentd.name | trunc 63 | trimSuffix "-" -}}
-{{- end -}}
-{{- end -}}
-{{- end -}}
-
-{{/*
 Create a fully qualified fluent-bit name.
 We truncate at 63 chars because some Kubernetes name fields are limited to this (by the DNS naming spec).
 */}}
-{{- define "lexlogger.fluentbit.fullname" -}}
-{{- if .Values.fluentbit.fullnameOverride -}}
-{{- .Values.fluentbit.fullnameOverride | trunc 63 | trimSuffix "-" -}}
+{{- define "lexlogger.beats.fullname" -}}
+{{- if .Values.beats.fullnameOverride -}}
+{{- .Values.beats.fullnameOverride | trunc 63 | trimSuffix "-" -}}
 {{- else -}}
 {{- $name := default .Chart.Name .Values.nameOverride -}}
 {{- if contains $name .Release.Name -}}
-{{- printf "%s-%s" .Release.Name .Values.fluentbit.name | trunc 63 | trimSuffix "-" -}}
+{{- printf "%s-%s" .Release.Name .Values.beats.name | trunc 63 | trimSuffix "-" -}}
 {{- else -}}
-{{- printf "%s-%s-%s" .Release.Name $name .Values.fluentbit.name | trunc 63 | trimSuffix "-" -}}
+{{- printf "%s-%s-%s" .Release.Name $name .Values.beats.name | trunc 63 | trimSuffix "-" -}}
 {{- end -}}
 {{- end -}}
 {{- end -}}
@@ -154,13 +137,13 @@ Return the appropriate apiVersion for networkpolicy.
 {{- end -}}
 
 {{/*
-Create the name of the service account to use for the fluentbit component
+Create the name of the service account to use for the beats component
 */}}
-{{- define "lexlogger.serviceAccountName.fluentbit" -}}
-{{- if .Values.serviceAccounts.fluentbit.create -}}
-    {{ default (include "lexlogger.fluentbit.fullname" .) .Values.serviceAccounts.fluentbit.name }}
+{{- define "lexlogger.serviceAccountName.beats" -}}
+{{- if .Values.serviceAccounts.beats.create -}}
+    {{ default (include "lexlogger.beats.fullname" .) .Values.serviceAccounts.beats.name }}
 {{- else -}}
-    {{ default "default" .Values.serviceAccounts.fluentbit.name }}
+    {{ default "default" .Values.serviceAccounts.beats.name }}
 {{- end -}}
 {{- end -}}
 
