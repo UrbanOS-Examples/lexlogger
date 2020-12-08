@@ -114,7 +114,7 @@ elasticsearch:
       enabled: true
       accessMode: ReadWriteOnce
       name: data
-      size: "30Gi"
+      size: "75Gi"
     terminationGracePeriodSeconds: 3600
     antiAffinity: "soft"
     nodeAffinity: {}
