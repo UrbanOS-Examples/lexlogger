@@ -1,7 +1,7 @@
 {{- if .Values.fluentd.ingress.enabled -}}
 {{- $serviceName := include "lexlogger.fluentd.fullname" . -}}
 {{- $servicePort := .Values.fluentd.service.externalPort -}}
-apiVersion: extensions/v1beta1
+apiVersion: networking.k8s.io/v1beta1
 kind: Ingress
 metadata:
   annotations:
