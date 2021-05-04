@@ -38,6 +38,16 @@ data:
         DB.Sync          Normal
 {{- end }}
 
+{{- if .Values.fluentbit.extraFilters }}
+{{- range $extraFilter := .Values.fluentbit.extraFilters }}
+
+    [FILTER]
+        Name                {{ $extraFilter.name}}
+        Match               {{ $extraFilter.match}}
+        Exclude             {{ $extraFilter.exclude}}
+{{- end }}
+{{- end }}
+
     [FILTER]
         Name                kubernetes
         Match               {{ .Values.fluentbit.filter.kubeTag }}.*
