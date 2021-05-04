@@ -23,3 +23,11 @@ FluentD is included as the aggregator only in this chart, with a set number of p
 ## Fluent-Bit
 
 To maintain the ability to ship logs from all containers across the cluster to the central ElasticSearch repository by way of FluentD but without the excess overhead of replicating FluentD across the entire cluster, the much lighter weight Fluent-Bit is used as a simple log shipper with the additional option to collect metrics from the Fluent-Bit pods in complement to a Prometheus stack.
+
+## Template Debugging
+To debug helm templating locally you can run the following commands
+
+```bash
+helm dependency update
+helm template -f values.yaml .
+```

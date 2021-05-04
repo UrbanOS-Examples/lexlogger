@@ -198,6 +198,11 @@ fluentbit:
 
   nodeSelector: {}
 
+  extraFilters:
+    - name: grep
+      match: "*"
+      exclude: log /.*ELB-HealthChecker.*/
+
   filter:
     kubeURL: https://kubernetes.default.svc:443
     kubeCAFile: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
