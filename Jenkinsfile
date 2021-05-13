@@ -51,7 +51,6 @@ def deployLoggingTo(environment) {
 
         sh("""#!/bin/bash
 
-            helm init --client-only
             helm dependency update
             helm upgrade --install lexlogger . \
                 --namespace=lexlogger \
